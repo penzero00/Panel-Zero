@@ -18,11 +18,14 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install dependencies
-        run: cd frontend && npm install
+        run: cd frontend && pnpm install
 
       - name: Type check
         run: cd frontend && npm run type-check
