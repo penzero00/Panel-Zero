@@ -1,0 +1,46 @@
+# Gitignore
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+frontend/.env.*.local
+frontend/dist/
+frontend/build/
+frontend/.turbo/
+
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/.env.local
+backend/dist/
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# System
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.log
+*.tmp
+.tmp/
+
+# Generated files
+*.backup
+_backup.docx
+
+# OS
+.env
+node_modules

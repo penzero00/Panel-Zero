@@ -1,0 +1,33 @@
+{
+  "name": "panelzero",
+  "version": "0.1.0",
+  "description": "Role-based multi-agent AI grading system for academic thesis defenses",
+  "author": "PanelZero Team",
+  "private": true,
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "frontend:build": "turbo build --filter=panelzero-frontend",
+    "frontend:dev": "turbo dev --filter=panelzero-frontend",
+    "frontend:lint": "turbo lint --filter=panelzero-frontend",
+    "frontend:type-check": "turbo type-check --filter=panelzero-frontend",
+    "backend:install": "cd backend && pip install -r requirements.txt",
+    "backend:dev": "cd backend && python main.py",
+    "backend:worker": "cd backend && celery -A worker.celery_app worker --loglevel=info"
+  },
+  "keywords": [
+    "ai",
+    "grading",
+    "thesis",
+    "academic",
+    "docx",
+    "fastapi",
+    "nextjs",
+    "react"
+  ],
+  "devDependencies": {
+    "turbo": "^1.12.4"
+  }
+}
