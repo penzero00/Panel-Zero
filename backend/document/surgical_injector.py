@@ -8,12 +8,8 @@ import os
 import shutil
 from pathlib import Path
 from docx import Document
-from docx.oxml import parse_xml
-from docx.oxml.ns import nsdecls
 from docx.enum.text import WD_COLOR_INDEX
-from docx.shared import Pt, RGBColor
 from typing import Optional, List, Dict, Any
-
 
 class SurgicalInjector:
     """
@@ -25,60 +21,24 @@ class SurgicalInjector:
     def __init__(self, docx_path: str):
         """
         Initialize with DOCX file path.
-        Automatically creates a backup copy.
+        Automatically creates a working copy so the original downloaded from Supabase is safe.
         """
         self.original_path = docx_path
-        self.doc_path = docx_path
-        self.doc = Document(docx_path)
-        self._create_backup()
+        
+        # Create a safe working copy path (e.g., /tmp/file_working.docx)
+        path_obj = Path(docx_path)
+        self.working_path = str(path_obj.with_name(f"{path_obj.stem}_working{path_obj.suffix}"))
+        
+        # Create the working copy
+        shutil.copy2(self.original_path, self.working_path)
+        print(f"Working copy created at: {self.working_path}")
+        
+        # Open the working copy for manipulation
+        self.doc = Document(self.working_path)
 
-    def _create_backup(self):
-        """Create a backup of the original file before processing"""
-        backup_path = self.original_path.replace(".docx", "_backup.docx")
-        shutil.copy2(self.original_path, backup_path)
-        print(f"Backup created at: {backup_path}")
-
-    def read_page_margins(self) -> Dict[str, float]:
-        """
-        Read exact margins from document.sections.
-        CRITICAL: Never estimate visual space.
-        Returns margins in inches.
-        """
-        margins = {}
-        if self.doc.sections:
-            section = self.doc.sections[0]
-            margins = {
-                "left": section.left_margin.inches,
-                "right": section.right_margin.inches,
-                "top": section.top_margin.inches,
-                "bottom": section.bottom_margin.inches,
-            }
-        return margins
-
-    def read_font_properties(self) -> Dict[str, Any]:
-        """Extract font family and size from first paragraph"""
-        if self.doc.paragraphs:
-            first_para = self.doc.paragraphs[0]
-            if first_para.runs:
-                run = first_para.runs[0]
-                return {
-                    "font_name": run.font.name or "Calibri",
-                    "font_size": run.font.size.pt if run.font.size else 11,
-                }
-        return {"font_name": "Calibri", "font_size": 11}
-
-    def inject_yellow_highlight(self, paragraph_index: int, run_index: int, text_match: str) -> bool:
+    def inject_yellow_highlight(self, paragraph_index: int, run_index: int, text_match: str = "") -> bool:
         """
         Inject yellow highlight on specific run within a paragraph.
-        CRITICAL: Apply highlight directly to run.font.highlight_color
-        
-        Args:
-            paragraph_index: Index of paragraph in document
-            run_index: Index of run within paragraph
-            text_match: Expected text to verify
-            
-        Returns:
-            True if successful, False otherwise
         """
         try:
             if paragraph_index >= len(self.doc.paragraphs):
@@ -91,8 +51,9 @@ class SurgicalInjector:
 
             run = para.runs[run_index]
 
-            # Verify text match for safety
-            if text_match not in run.text:
+            # Verify text match for safety (optional but recommended)
+            if text_match and text_match not in run.text:
+                print(f"Text mismatch: Expected '{text_match}', found '{run.text}'")
                 return False
 
             # Apply highlight without altering other styles
@@ -103,53 +64,23 @@ class SurgicalInjector:
             print(f"Error injecting highlight: {e}")
             return False
 
-    def inject_comment(self, paragraph_index: int, comment_text: str, author: str = "PanelZero") -> bool:
-        """
-        Inject a Word comment bubble via XML manipulation.
-        Note: This requires lxml to manipulate the comment.xml part.
-        """
-        try:
-            # This is a simplified version; full implementation would require
-            # manipulating the document.xml.rels and comments.xml parts
-            if paragraph_index >= len(self.doc.paragraphs):
-                return False
-
-            para = self.doc.paragraphs[paragraph_index]
-            
-            # Add a note via a paragraph rPr element (simplified approach)
-            # Full implementation requires deeper XML manipulation
-            return True
-
-        except Exception as e:
-            print(f"Error injecting comment: {e}")
-            return False
-
     def save_processed_file(self, output_path: str) -> bool:
         """
-        Save the processed document to a new file.
-        Original file remains untouched.
+        Save the processed document to the final output path.
+        Cleans up the temporary working file afterward.
         """
         try:
             self.doc.save(output_path)
             print(f"Processed document saved to: {output_path}")
+            
+            # Clean up the temporary working file
+            if os.path.exists(self.working_path):
+                os.remove(self.working_path)
+                
             return True
         except Exception as e:
             print(f"Error saving processed file: {e}")
             return False
-
-    def verify_docx_integrity(self) -> bool:
-        """
-        Verify that the DOCX file structure is intact.
-        Used for validation before and after processing.
-        """
-        try:
-            # Try to load the document to verify integrity
-            test_doc = Document(self.doc_path)
-            return len(test_doc.paragraphs) > 0
-        except Exception as e:
-            print(f"DOCX integrity check failed: {e}")
-            return False
-
 
 def process_docx_with_highlights(
     input_path: str,
@@ -157,45 +88,28 @@ def process_docx_with_highlights(
     highlights: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """
-    Main function to process a DOCX file with surgical injection.
-    
-    Args:
-        input_path: Path to input DOCX file
-        output_path: Path to save processed file
-        highlights: List of highlight locations and metadata
-        
-    Returns:
-        Dict with processing results
+    Main function called by the Celery Worker to process a DOCX file.
     """
     try:
         injector = SurgicalInjector(input_path)
 
-        # Verify integrity before processing
-        if not injector.verify_docx_integrity():
-            return {"success": False, "error": "DOCX file integrity check failed"}
-
-        # Read document properties
-        margins = injector.read_page_margins()
-        fonts = injector.read_font_properties()
-
-        # Apply highlights
+        # Apply highlights based on AI output
         successful_highlights = 0
         for highlight in highlights:
+            # AI will provide these coordinates
             if injector.inject_yellow_highlight(
-                highlight.get("paragraph_index", 0),
-                highlight.get("run_index", 0),
-                highlight.get("text_match", ""),
+                paragraph_index=highlight.get("paragraph_index", 0),
+                run_index=highlight.get("run_index", 0),
+                text_match=highlight.get("text_match", ""),
             ):
                 successful_highlights += 1
 
-        # Save processed file
+        # Save processed file (e.g., thesis_REVIEWED.docx)
         if injector.save_processed_file(output_path):
             return {
                 "success": True,
                 "output_path": output_path,
                 "highlights_applied": successful_highlights,
-                "margins": margins,
-                "fonts": fonts,
                 "message": f"Successfully processed {successful_highlights} highlights",
             }
         else:

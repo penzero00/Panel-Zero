@@ -7,42 +7,36 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import FileResponse
 from typing import List, Dict, Any
 from supabase import create_client
-from core import settings
+from core.config import settings
 import uuid
 import os
 
-router = APIRouter(prefix="/documents", tags=["documents"])
-
+# Updated prefix to match standard API versioning
+router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 def get_supabase():
-    """Get Supabase client"""
+    """Get Supabase client connected to the live project"""
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-
 
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    user_id: str = "current_user",
+    user_id: str = "current_user",  # In production, extract this from a JWT token
     supabase=Depends(get_supabase),
 ) -> Dict[str, Any]:
     """
-    Upload a DOCX file with strict validation.
-    Per AGENTS.md: Strict Rule Violation - NO PDFs allowed
-    
-    - Validates .docx extension
-    - Enforces file size limit (50MB)
-    - Stores in Supabase with RLS enforcement
-    - Returns ephemeral download URL
+    Upload a DOCX file with strict validation to Supabase.
     """
     
-    # Validate file extension
-    if not file.filename.endswith(".docx"):
+    # 1. Dynamic Extension Validation (Using .env settings)
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Strict Rule Violation: PDFs are dead documents. Upload a .docx file.",
+            detail=f"Strict Rule Violation: Invalid file type. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}",
         )
 
-    # Check file size (50MB limit)
+    # 2. Check file size using the .env limit
     max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
     content = await file.read()
     if len(content) > max_size:
@@ -52,7 +46,7 @@ async def upload_document(
         )
 
     try:
-        # Generate unique file ID
+        # Generate unique file ID and Path
         file_id = str(uuid.uuid4())
         file_path = f"{user_id}/{file_id}/{file.filename}"
 
@@ -77,12 +71,11 @@ async def upload_document(
         return {
             "file_id": file_id,
             "file_path": file_path,
-            "message": "Document uploaded successfully",
+            "message": "Document uploaded successfully to Supabase",
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
 
 @router.get("/{file_id}")
 async def get_document(
@@ -111,7 +104,6 @@ async def get_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("")
 async def list_documents(
     user_id: str = "current_user",
@@ -119,7 +111,6 @@ async def list_documents(
 ) -> List[Dict[str, Any]]:
     """
     List all documents owned by the user.
-    RLS prevents access to other users' documents.
     """
     try:
         docs = (
@@ -133,7 +124,6 @@ async def list_documents(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.delete("/{file_id}")
 async def delete_document(
     file_id: str,
@@ -142,7 +132,6 @@ async def delete_document(
 ) -> Dict[str, str]:
     """
     Delete a document from storage and database.
-    Per AGENTS.md: Zero-retention policy
     """
     try:
         # Get document to verify ownership
