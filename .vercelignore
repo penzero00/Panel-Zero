@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+__pycache__
+*.pyc
+.env
+.env.local
+.env.*.local
+venv
+.venv
+*.egg-info
+.pytest_cache

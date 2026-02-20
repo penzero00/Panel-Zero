@@ -1,59 +1,75 @@
 """
-FastAPI Application Entry Point
+Flask Application Entry Point for PanelZero
 Configures routes, middleware, and startup logic
+Vercel-ready serverless backend
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from core import settings
-from api import documents_router, analysis_router
+from flask import Flask, jsonify
+from flask_cors import CORS
+from core.config import settings
+from api.documents import documents_bp
+from api.analysis import analysis_bp
 
-app = FastAPI(
-    title=settings.API_TITLE,
-    version=settings.API_VERSION,
-    debug=settings.DEBUG,
+app = Flask(__name__)
+
+# CORS Configuration - Allow all origins for Vercel
+CORS(
+    app,
+    origins="*",
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 )
 
-# CORS Configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include routers
-app.include_router(documents_router)
-app.include_router(analysis_router)
+# Register blueprints
+app.register_blueprint(documents_bp)
+app.register_blueprint(analysis_bp)
 
 
-@app.get("/health")
-async def health_check():
+@app.route("/api/health", methods=["GET"])
+def health_check():
     """Health check endpoint"""
-    return {
+    return jsonify({
         "status": "healthy",
         "api": settings.API_TITLE,
         "version": settings.API_VERSION,
-    }
+    })
 
 
-@app.get("/")
-async def root():
+@app.route("/", methods=["GET"])
+def root():
     """Root endpoint"""
-    return {
+    return jsonify({
         "message": "PanelZero API",
-        "docs": "/docs",
-        "health": "/health",
-    }
+        "health": "/api/health",
+        "docs": "/api/docs",
+    })
+
+
+@app.route("/api/docs", methods=["GET"])
+def docs():
+    """API Documentation endpoint"""
+    return jsonify({
+        "endpoints": {
+            "health": "GET /api/health",
+            "documents": "POST /api/v1/documents/upload",
+            "analysis": "POST /api/v1/analysis/start",
+        },
+    })
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({"error": "Not found"}), 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    """Handle 500 errors"""
+    return jsonify({"error": "Internal server error"}), 500
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG,
-    )
+    # Local development only
+    app.run(debug=settings.DEBUG, host="0.0.0.0", port=8000)
