@@ -1,37 +1,34 @@
 # Backend Directory
 
-This directory contains the FastAPI server and Celery workers for PanelZero.
+This directory contains the Flask server for PanelZero. Serverless-ready, synchronous processing.
 
 ## Structure
 
 ```
 backend/
-├── main.py               # FastAPI app entry point
-├── worker.py            # Celery configuration + tasks
-├── api/                 # REST API routes
-│   ├── documents.py     # File upload/management
-│   └── analysis.py      # Analysis task execution
-├── agents/              # AI agent implementations
-│   ├── __init__.py      # Agent definitions + routing
-│   ├── technical_reader.py  # Pure Python format checker
-│   └── llm_executor.py  # Gemini/GPT-4o integration
-├── document/            # DOCX processing
-│   ├── surgical_injector.py    # Non-destructive XML editing ⭐
-│   └── parser.py        # Chapter extraction + chunking
-├── core/                # Configuration
-│   └── config.py        # Pydantic BaseSettings
-├── requirements.txt     # Python dependencies
-├── .env.example        # Example env vars
-├── database_schema.sql # Supabase schema setup
-├── Dockerfile          # Docker image
-└── README.md           # This file
+├── main.py               # Flask app entry point (Vercel-ready)
+├── api/                  # Flask Blueprint routes
+│   ├── documents.py      # File upload/management
+│   └── analysis.py       # Analysis execution (synchronous)
+├── agents/               # AI agent implementations
+│   ├── __init__.py       # Agent definitions + routing
+│   ├── technical_reader.py   # Pure Python format checker
+│   └── llm_executor.py   # Gemini/GPT-4o integration
+├── document/             # DOCX processing
+│   ├── surgical_injector.py   # Non-destructive XML editing ⭐
+│   └── parser.py         # Chapter extraction + chunking
+├── core/                 # Configuration
+│   └── config.py         # Pydantic BaseSettings
+├── requirements.txt      # Python dependencies (Flask only)
+├── .env.example          # Example env vars
+├── database_schema.sql   # Supabase schema setup
+└── README.md             # This file
 ```
 
 ## Key Files
 
-- **main.py**: FastAPI app with CORS, route registration
-- **worker.py**: Celery task definitions + scheduling
-- **api/**: REST endpoints (documents, analysis)
+- **main.py**: Flask app with CORS, blueprint registration
+- **api/**: REST endpoints (documents, analysis) - synchronous processing
 - **agents/**: AI logic with smart routing
 - **document/surgical_injector.py**: The Golden Rules apply here ⭐
 
@@ -39,21 +36,20 @@ backend/
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate  # Windows only
 pip install -r requirements.txt
 
-# Terminal 1: FastAPI server
+# Start Flask server
 python main.py
-
-# Terminal 2: Celery worker
-celery -A worker.celery_app worker --loglevel=info
-
-# Terminal 3: Celery Beat (scheduler)
-celery -A worker.celery_app beat --loglevel=info
 ```
 
 API will run at `http://localhost:8000`
-Docs available at `http://localhost:8000/docs`
+
+## Processing Model
+
+- **Synchronous**: All requests are processed directly (no background queue)
+- **Serverless-Ready**: Suitable for Vercel deployment
+- **Timeout Aware**: Be mindful of Vercel timeout limits (30-900 seconds based on plan)
 
 ## Important Rules
 
@@ -88,14 +84,16 @@ injector.save_processed_file(output_path)
 ## API Endpoints
 
 ### Documents
-- `POST /documents/upload` — Upload DOCX
-- `GET /documents` — List files (RLS)
-- `GET /documents/{id}` — Get metadata
-- `DELETE /documents/{id}` — Delete file
+- `POST /api/v1/documents/upload` — Upload DOCX
+- `GET /api/v1/documents` — List files (RLS)
+- `GET /api/v1/documents/{id}` — Get metadata
+- `DELETE /api/v1/documents/{id}` — Delete file
 
 ### Analysis
-- `POST /analysis/start` — Start task (returns task_id)
-- `GET /analysis/status/{task_id}` — Poll status
-- `GET /analysis/download/{task_id}` — Download file
+- `POST /api/v1/analysis/start` — Start analysis (processes synchronously)
+- `GET /api/v1/analysis/status/{task_id}` — Get status
+- `GET /api/v1/analysis/download/{task_id}` — Download file
 
-See `DEVELOPMENT.md` for flow diagrams.
+## Deployment
+
+For Vercel deployment, see `DEPLOYMENT.md` in the root directory.

@@ -20,14 +20,9 @@ class Settings(BaseSettings):
     GEMINI_FLASH_MODEL: str = "gemini-1.5-flash"
     GEMINI_PRO_MODEL: str = "gemini-1.5-pro"
 
-    # Redis & Celery
-    REDIS_URL: str = "redis://localhost:6379/0"
-    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
-
     # Storage
     MAX_FILE_SIZE_MB: int = 50
-    ALLOWED_EXTENSIONS: List[str] = [".docx", ".pdf"]
+    ALLOWED_EXTENSIONS: List[str] = [".docx"]
     STORAGE_BUCKET_NAME: str = "thesis-drafts"
     FILE_RETENTION_HOURS: int = 1
     

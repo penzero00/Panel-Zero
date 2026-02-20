@@ -33,7 +33,7 @@
 - The "Surgical Injection" method for DOCX editing.
 - File naming conventions.
 - Prompts and system instructions for the LLM agents.
-- Usage examples for the Celery task queue.
+- API endpoint documentation and request/response models.
 
 ## 🎓 PanelZero Project Overview
 
@@ -52,9 +52,9 @@ PanelZero is a role-based, multi-agent AI grading system designed specifically f
 This project is structured as a standard monorepo containing a frontend application and a backend processing engine.
 
 - **Frontend (/frontend)**: Next.js 15 web application with React 19.
-- **Backend (/backend)**: FastAPI server handling the AI agents and document parsing.
+- **Backend (/backend)**: Flask server (serverless-ready) handling the AI agents and document parsing.
 - **Database & Auth**: Supabase (PostgreSQL).
-- **Task Queue**: Redis and Celery for handling long-running document analysis.
+- **Processing**: Synchronous request-based processing (no task queue).
 
 ## 🏗️ Project Stack
 
@@ -70,10 +70,10 @@ This project is structured as a standard monorepo containing a frontend applicat
 
 ### Backend Application (/backend)
 
-- **Framework**: FastAPI (Python 3.10+).
+- **Framework**: Flask (Python 3.10+) with Blueprint-based routing.
 - **Document Processing**: python-docx and lxml.
 - **AI Integration**: OpenAI SDK (GPT-4o) and Google GenAI SDK (Gemini 1.5 Flash/Pro).
-- **Task Queue**: Celery with Redis broker.
+- **Processing Model**: Synchronous request-based (serverless-ready for Vercel).
 - **Storage Client**: Supabase Python Client.
 
 ## 📂 Monorepo Structure
@@ -86,12 +86,14 @@ panel-zero/
 │   ├── lib/                  # Frontend utilities and Supabase client
 │   └── types/                # TypeScript interfaces
 │
-├── backend/                  # FastAPI server
-│   ├── api/                  # Route handlers
+├── backend/                  # Flask server
+│   ├── api/                  # Blueprint routes (documents, analysis)
 │   ├── core/                 # Config and shared backend logic
 │   ├── agents/               # AI logic (Statistician, Grammar, etc.)
-│   ├── document/             # DOCX parsing and surgical injection logic
-│   └── worker.py             # Celery worker setup
+│   └── document/             # DOCX parsing and surgical injection logic
+│
+├── api/                      # Vercel serverless function entry point
+│   └── index.py             # Flask app export
 │
 ├── .github/                  # GitHub Actions and workflows
 └── package.json              # Root configurations
@@ -142,7 +144,7 @@ docs: update LLM routing rules in agents.md
 
 #### TanStack Query Protocol:
 
-- ✅ **ALWAYS** use TanStack Query for all backend FastAPI calls and Supabase data fetching.
+- ✅ **ALWAYS** use TanStack Query for all backend Flask calls and Supabase data fetching.
 - ❌ **NEVER** use useState or useEffect to manage loading states or fetch server data.
 
 #### Component Conventions:
@@ -153,14 +155,40 @@ docs: update LLM routing rules in agents.md
 
 ### Backend API Guidelines
 
-#### Async Operations:
+#### Synchronous Processing Model:
 
-- Use `async def` for FastAPI routes.
-- Document processing takes a long time. The FastAPI route should immediately return a `task_id` while Celery processes the DOCX in the background.
+- ✅ Use `def` (not `async def`) for Flask routes since processing is now synchronous.
+- ✅ Process documents directly within the request/response cycle.
+- ✅ Return results immediately after analysis completes (suitable for Vercel serverless).
+- ⚠️ Be aware of Vercel timeout limits (30-300 seconds depending on plan).
+- For very long processing, consider implementing:
+  - Document chunking to reduce per-request time
+  - Streaming responses
+  - Progress endpoints for client-side polling
 
 #### Error Handling:
 
 - Always catch XML parsing errors. If python-docx fails to read a corrupted file, return a clean 400 HTTP error to the frontend, not a 500 server crash.
+- Return proper HTTP status codes for different failure scenarios.
+
+#### Flask Route Pattern:
+
+```python
+@blueprint_name.route("/endpoint", methods=["POST"])
+def route_handler():
+    """Handler description"""
+    try:
+        # Extract request data
+        data = request.get_json()
+        
+        # Process synchronously
+        result = process_document(data)
+        
+        # Return result
+        return result, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+```
 
 ## 🔒 Data Privacy & Supabase Rules
 

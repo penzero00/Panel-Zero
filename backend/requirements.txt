@@ -1,14 +1,11 @@
-fastapi
-uvicorn
+flask
+flask-cors
 python-docx
 lxml
 supabase
 python-dotenv
-celery
-redis
 openai
 google-generativeai
-python-multipart
 pydantic
 pydantic-settings
 typing-extensions
