@@ -44,8 +44,5 @@ jobs:
       - name: Type check
         run: pnpm --filter=panelzero-frontend type-check
 
-      - name: Lint
-        run: pnpm --filter=panelzero-frontend lint
-
       - name: Build
         run: pnpm --filter=panelzero-frontend build

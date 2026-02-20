@@ -26,7 +26,12 @@ jobs:
         run: cd backend && pip install -r requirements.txt
 
       - name: Check for syntax errors
-        run: cd backend && python -m py_compile api/documents.py api/analysis.py main.py
+        run: cd backend && python -m py_compile api/documents.py api/analysis.py main.py core/config.py
 
-      - name: Verify Flask routes
-        run: cd backend && python -c "from main import app; print('Flask app loaded successfully')"
+      - name: Verify Flask app initialization
+        env:
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_SERVICE_KEY: "test-key"
+          SUPABASE_ANON_KEY: "test-anon-key"
+          BYTEZ_API_KEY: "test-bytez-key"
+        run: cd backend && python -c "from main import app; print('✓ Flask app loaded successfully')"

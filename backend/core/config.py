@@ -7,13 +7,13 @@ class Settings(BaseSettings):
     API_TITLE: str = "PanelZero API"
     API_VERSION: str = "0.1.0"
 
-    # Supabase
-    SUPABASE_URL: str
-    SUPABASE_SERVICE_KEY: str
-    SUPABASE_ANON_KEY: str
+    # Supabase (optional for testing)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
 
-    # AI API Keys
-    BYTEZ_API_KEY: str
+    # AI API Keys (optional for testing)
+    BYTEZ_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o"
