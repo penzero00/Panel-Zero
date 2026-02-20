@@ -1,13 +1,7 @@
-"""
-LLM Agent Executor
-Routes to Gemini or GPT-4o based on agent role
-"""
-
 from typing import Dict, Any, Optional
 import google.generativeai as genai
 from openai import OpenAI
 from core import settings
-
 
 class LLMAgentExecutor:
     """Routes LLM requests to appropriate model"""
