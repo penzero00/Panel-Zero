@@ -3,8 +3,12 @@
   "globalDependencies": [".env", ".env.local", ".env.*.local"],
   "pipeline": {
     "build": {
-      "outputs": [".next/**", "dist/**", "build/**"],
+      "outputs": ["frontend/.next/**", "dist/**", "build/**"],
       "cache": true
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
     },
     "dev": {
       "cache": false,

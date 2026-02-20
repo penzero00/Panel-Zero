@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "pnpm build",
-  "outputDirectory": "frontend/.next",
   "framework": "nextjs",
   "functions": {
     "api/**/*.py": {
