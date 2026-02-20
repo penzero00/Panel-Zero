@@ -11,12 +11,12 @@ import { UploadCloud, FolderOpen, Settings, X } from 'lucide-react';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'analysis' | 'documents' | 'rubrics';
-  onTabChange: (tab: 'analysis' | 'documents' | 'rubrics') => void;
+  activeTab: 'analysis' | 'documents' | 'profiles';
+  onTabChange: (tab: 'analysis' | 'documents' | 'profiles') => void;
 }
 
 export function Sidebar({ isOpen, onClose, activeTab, onTabChange }: SidebarProps) {
-  const handleTabClick = (tab: 'analysis' | 'documents' | 'rubrics') => {
+  const handleTabClick = (tab: 'analysis' | 'documents' | 'profiles') => {
     onTabChange(tab);
     onClose();
   };
@@ -69,15 +69,15 @@ export function Sidebar({ isOpen, onClose, activeTab, onTabChange }: SidebarProp
               </li>
               <li>
                 <button
-                  onClick={() => handleTabClick('rubrics')}
+                  onClick={() => handleTabClick('profiles')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === 'rubrics'
+                    activeTab === 'profiles'
                       ? 'bg-blue-50 text-blue-600 shadow-sm'
                       : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <Settings size={20} />
-                  <span>Rubric Profiles</span>
+                  <span>Agent Profiles</span>
                 </button>
               </li>
             </ul>

@@ -11,8 +11,8 @@ import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   isAuthenticated: boolean;
-  activeTab: 'analysis' | 'documents' | 'rubrics';
-  onTabChange: (tab: 'analysis' | 'documents' | 'rubrics') => void;
+  activeTab: 'analysis' | 'documents' | 'profiles';
+  onTabChange: (tab: 'analysis' | 'documents' | 'profiles') => void;
   userName?: string;
   onLogout: () => void;
 }

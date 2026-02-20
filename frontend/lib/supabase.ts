@@ -1,58 +1,115 @@
 /**
- * Supabase Client Configuration (Mock for Development)
- * This is a mock client for local development without a real database
- * Will be replaced with real Supabase client when database is ready
+ * Supabase Client Configuration
+ * Real Supabase client for authentication and database operations
  */
 
-// Mock Supabase client for development
-const mockSupabase = {
+import { createClient } from '@supabase/supabase-js';
+
+// Get environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Validate environment variables
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase environment variables');
+  console.error('Required: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  throw new Error('Missing Supabase environment variables');
+}
+
+// Create Supabase client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    onAuthStateChange: (callback: any) => {
-      callback('SIGNED_IN', { user: { id: 'dev-user-123', email: 'dev@example.com' } });
-      return { data: { subscription: { unsubscribe: () => {} } } };
-    },
-    getSession: async () => ({
-      data: {
-        session: {
-          user: { id: 'dev-user-123', email: 'dev@example.com' },
-          access_token: 'dev-token-mock',
-        },
-      },
-      error: null,
-    }),
-    signInWithPassword: async (credentials: any) => ({
-      data: {
-        user: { id: 'dev-user-123', email: credentials.email },
-        session: { access_token: 'dev-token-mock' },
-      },
-      error: null,
-    }),
-    signUp: async (credentials: any) => ({
-      data: {
-        user: { id: 'dev-user-123', email: credentials.email },
-        session: { access_token: 'dev-token-mock' },
-      },
-      error: null,
-    }),
-    signOut: async () => ({ error: null }),
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
   },
-  from: (table: string) => ({
-    select: () => ({ data: [], error: null }),
-    insert: (data: any) => ({ data, error: null }),
-    update: (data: any) => ({ data, error: null }),
-    delete: () => ({ data: null, error: null }),
-    eq: () => ({ data: [], error: null }),
-  }),
-  storage: {
-    from: (bucket: string) => ({
-      upload: async (path: string, file: any) => ({ data: { path }, error: null }),
-      download: async (path: string) => ({ data: new Blob(), error: null }),
-      remove: async (paths: string[]) => ({ data: paths, error: null }),
-      list: async () => ({ data: [], error: null }),
-    }),
-  },
+});
+
+console.log('✅ Supabase client initialized successfully');
+
+// Database types
+export type Database = {
+  public: {
+    Tables: {
+      user_profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          institution: string | null;
+          role: string;
+          email_verified: boolean;
+          avatar_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          institution?: string | null;
+          role?: string;
+          email_verified?: boolean;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          institution?: string | null;
+          role?: string;
+          email_verified?: boolean;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      documents: {
+        Row: {
+          id: string;
+          owner_id: string;
+          name: string;
+          file_path: string;
+          status: string;
+          major_errors: number;
+          minor_errors: number;
+          created_at: string;
+          expired_at: string;
+          deleted_at: string | null;
+        };
+      };
+      saved_files: {
+        Row: {
+          id: string;
+          owner_id: string;
+          document_id: string;
+          name: string;
+          notes: string | null;
+          is_favorite: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          document_id: string;
+          name: string;
+          notes?: string | null;
+          is_favorite?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          document_id?: string;
+          name?: string;
+          notes?: string | null;
+          is_favorite?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+    };
+  };
 };
 
-console.log('⚠️  Using mock Supabase client (development mode). No real database connected.');
-
-export const supabase = mockSupabase as any;

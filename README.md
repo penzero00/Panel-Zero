@@ -49,7 +49,7 @@ pnpm --filter=panelzero-frontend dev
 
 ✅ Frontend at `http://localhost:3000`
 
-**Mock authentication** allows any email/password to login. Great for designing and testing the UI without Supabase.
+**Note**: You'll need to set up Supabase for authentication. See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed instructions.
 
 ### 🏗️ Full Setup (Frontend + Backend)
 
@@ -58,8 +58,7 @@ If you want to run the entire system with real API processing:
 #### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- Redis (for Celery task queue)
-- Supabase project
+- Supabase project (for authentication and database)
 - OpenAI and Google Gemini API keys
 
 #### Installation
@@ -70,17 +69,21 @@ If you want to run the entire system with real API processing:
    cd Panel-Zero
    ```
 
-2. **Install pnpm Globally** (if not already installed)
+2. **Set Up Supabase**
+   - Follow the comprehensive guide in [SUPABASE_SETUP.md](SUPABASE_SETUP.md)
+   - This includes database schema, email verification, and RLS policies
+
+3. **Install pnpm Globally** (if not already installed)
    ```bash
    npm install -g pnpm
    ```
 
-3. **Install Frontend Dependencies** (from root)
+4. **Install Frontend Dependencies** (from root)
    ```bash
    pnpm install
    ```
 
-4. **Setup Backend**
+5. **Setup Backend**
    ```bash
    cd backend
    python -m venv venv
@@ -88,36 +91,44 @@ If you want to run the entire system with real API processing:
    pip install -r requirements.txt
    ```
 
-5. **Configure Backend Environment** (create `backend/.env`)
+6. **Configure Backend Environment** (create `backend/.env` from `.env.example`)
    ```bash
-   OPENAI_API_KEY=your_key_here
-   GEMINI_API_KEY=your_key_here
    SUPABASE_URL=your_project_url
    SUPABASE_SERVICE_KEY=your_service_key
+   SUPABASE_ANON_KEY=your_anon_key
+   OPENAI_API_KEY=your_key_here
+   GEMINI_API_KEY=your_key_here
    ```
 
-6. **Configure Frontend Environment** (create `frontend/.env.local`)
+7. **Configure Frontend Environment** (create `frontend/.env.local` from `.env.example`)
+   ```bash
+7. **Configure Frontend Environment** (create `frontend/.env.local` from `.env.example`)
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=your_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   NEXT_PUBLIC_API_URL=http://localhost:8000
+   NEXT_PUBLIC_API_URL=http://localhost:5000
    ```
 
-7. **Start Services** (from root, in 3 terminals)
+8. **Start Services** (from root, in 2 terminals)
    ```bash
    # Terminal 1: Frontend (using Turbo monorepo)
    pnpm --filter=panelzero-frontend dev
    
    # Terminal 2: Backend API
    cd backend && python main.py
-   
-   # Terminal 3: Celery Worker
-   cd backend && celery -A worker.celery_app worker --loglevel=info
    ```
 
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000/docs
-   - Celery monitoring available at backend logs
+   - Backend API: http://localhost:5000
+
+### 🔐 User Authentication Flow
+
+1. **Sign Up**: Navigate to `/signup` and create an account
+2. **Email Verification**: Check your email and click the verification link
+3. **Dashboard Access**: After verification, you'll be redirected to the dashboard
+4. **Upload Documents**: Upload your thesis draft and select your panel role
+
+All user data is protected by Supabase Row Level Security (RLS), ensuring users can only access their own documents and saved files.
 
 
 ## Security and Privacy

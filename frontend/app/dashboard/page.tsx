@@ -15,9 +15,19 @@ import { DocumentUpload } from '@/components/document-upload';
 import { AgentRoleSelector } from '@/components/agent-role-selector';
 import { ExecutionPipeline } from '@/components/execution-pipeline';
 import { DocumentPreview } from '@/components/document-preview';
+import { AgentProfileManager } from '@/components/agent-profile-manager';
 import { supabase } from '@/lib/supabase';
-import { useUploadDocument, useStartAnalysis, useAnalysisStatus } from '@/lib/query-hooks';
-import type { AgentRole } from '@/types/index';
+import { 
+  useUploadDocument, 
+  useStartAnalysis, 
+  useAnalysisStatus,
+  useAgentProfiles,
+  useCreateAgentProfile,
+  useUpdateAgentProfile,
+  useDeleteAgentProfile,
+  useSetActiveAgentProfile
+} from '@/lib/query-hooks';
+import type { AgentRole, AgentProfile } from '@/types/index';
 
 const MOCK_DOCUMENTS = [
   { id: 1, name: 'Smith_Thesis_Draft_v3.docx', date: 'Oct 24, 2026', status: 'Reviewed', errors: 12 },
@@ -25,16 +35,13 @@ const MOCK_DOCUMENTS = [
   { id: 3, name: 'Literature_Review_Notes.docx', date: 'Oct 15, 2026', status: 'Rejected', errors: 45 },
 ];
 
-const MOCK_RUBRICS = [
-  { id: 1, name: 'APA 7th Edition (Strict)', desc: 'Standard margins, Times New Roman, stringent citation checks.', active: true },
-  { id: 2, name: 'IEEE Engineering Standard', desc: 'Two-column format checking, strict figure numbering.', active: false },
-  { id: 3, name: 'Chicago Manual of Style', desc: 'Footnote verification and bibliography formatting.', active: false },
-];
+
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ email?: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'analysis' | 'documents' | 'rubrics'>('analysis');
+  const [token, setToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'analysis' | 'documents' | 'profiles'>('analysis');
   const [file, setFile] = useState<File | null>(null);
   const [selectedRole, setSelectedRole] = useState<AgentRole | ''>('');
   const [status, setStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
@@ -42,18 +49,25 @@ export default function DashboardPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
 
-  const uploadMutation = useUploadDocument(user?.email || null);
-  const startAnalysisMutation = useStartAnalysis(user?.email || null);
-  const { data: analysisStatus } = useAnalysisStatus(taskId, user?.email || null);
+  const uploadMutation = useUploadDocument(token);
+  const startAnalysisMutation = useStartAnalysis(token);
+  const { data: analysisStatus } = useAnalysisStatus(taskId, token);
+  const { data: profilesData, isLoading: profilesLoading } = useAgentProfiles(token);
+  const agentProfiles = (profilesData || []) as AgentProfile[];
+  const createProfileMutation = useCreateAgentProfile(token);
+  const updateProfileMutation = useUpdateAgentProfile(token);
+  const deleteProfileMutation = useDeleteAgentProfile(token);
+  const setActiveProfileMutation = useSetActiveAgentProfile(token);
 
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push('/login');
       } else {
-        setUser(currentUser);
+        setUser(session.user);
+        setToken(session.access_token);
       }
     };
     checkAuth();
@@ -93,6 +107,12 @@ export default function DashboardPage() {
     setStatus('processing');
     setProgress(0);
     // In a real app, this would upload and start the analysis via TanStack Query
+  };
+
+  const handleCancelScan = () => {
+    setStatus('idle');
+    setProgress(0);
+    // In a real app, this would cancel the ongoing analysis
   };
 
   const handleLogout = async () => {
@@ -170,54 +190,18 @@ export default function DashboardPage() {
     );
   }
 
-  if (activeTab === 'rubrics') {
+  if (activeTab === 'profiles') {
     return (
       <DashboardLayout user={user} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout}>
-        <div className="space-y-6 animate-in fade-in duration-300">
-          <header className="mb-8 flex justify-between items-end">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-800">Rubric Profiles</h2>
-              <p className="text-slate-500 mt-2">Manage formatting rules for the Technical Reader agent.</p>
-            </div>
-            <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-              <PlusCircle size={18} /> New Profile
-            </button>
-          </header>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {MOCK_RUBRICS.map((rubric) => (
-              <div
-                key={rubric.id}
-                className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
-                  rubric.active
-                    ? 'border-blue-500 bg-blue-50/50 shadow-md ring-4 ring-blue-500/10'
-                    : 'border-slate-200 bg-white/80 backdrop-blur-sm hover:border-slate-300 hover:shadow-sm'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-bold text-slate-800 text-lg">{rubric.name}</h3>
-                  {rubric.active && (
-                    <span className="bg-blue-600 text-white text-[10px] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase shadow-sm">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed">{rubric.desc}</p>
-                <button
-                  className={`text-sm font-semibold flex items-center gap-1 ${
-                    rubric.active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-800 transition-colors'
-                  }`}
-                >
-                  {rubric.active ? (
-                    <>
-                      <Settings size={14} /> Edit Rules
-                    </>
-                  ) : (
-                    'Set as Active'
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+        <div className="animate-in fade-in duration-300">
+          <AgentProfileManager
+            profiles={agentProfiles}
+            onCreateProfile={(profile) => createProfileMutation.mutate(profile)}
+            onUpdateProfile={(id, profile) => updateProfileMutation.mutate({ id, profile })}
+            onDeleteProfile={(id) => deleteProfileMutation.mutate(id)}
+            onSetActive={(profileId, agentRole) => setActiveProfileMutation.mutate({ profileId, agentRole })}
+            isLoading={profilesLoading}
+          />
         </div>
       </DashboardLayout>
     );
@@ -234,10 +218,10 @@ export default function DashboardPage() {
           </div>
           <div className="hidden md:flex items-center gap-4 bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm">
             <div className="text-sm">
-              <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest">Active Rubric</span>
-              <span className="font-semibold text-slate-700">APA 7th Edition</span>
+              <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest">Agent Profiles</span>
+              <span className="font-semibold text-slate-700">Manage Settings</span>
             </div>
-            <button onClick={() => setActiveTab('rubrics')} className="text-slate-400 hover:text-blue-600 p-1 transition-colors">
+            <button onClick={() => setActiveTab('profiles')} className="text-slate-400 hover:text-blue-600 p-1 transition-colors">
               <Settings size={18} />
             </button>
           </div>
@@ -245,21 +229,25 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Agent Role Selector - Dropdown Menu */}
+            <AgentRoleSelector
+              selectedRole={selectedRole}
+              onRoleSelect={setSelectedRole}
+              disabled={false}
+              agentProfiles={agentProfiles}
+            />
+
+            {/* Document Upload Section */}
             <DocumentUpload
               file={file}
               onFileSelect={handleFileSelect}
               errorMessage={errorMsg}
               isLoading={uploadMutation.isPending}
             />
-
-            <AgentRoleSelector
-              selectedRole={selectedRole}
-              onRoleSelect={setSelectedRole}
-              disabled={!file}
-            />
           </div>
 
           <div className="lg:col-span-1">
+            {/* Execution Pipeline - Right Sidebar */}
             <ExecutionPipeline
               status={status}
               progress={progress}
@@ -268,6 +256,7 @@ export default function DashboardPage() {
               minorErrors={14}
               onViewResult={scrollToPreview}
               onInitiateScan={handleStartAnalysis}
+              onCancelScan={handleCancelScan}
               isLoading={uploadMutation.isPending}
               canExecute={!!file && !!selectedRole}
             />
@@ -296,8 +285,8 @@ function DashboardLayout({
 }: {
   children: React.ReactNode;
   user: { email?: string } | null;
-  activeTab: 'analysis' | 'documents' | 'rubrics';
-  setActiveTab: (tab: 'analysis' | 'documents' | 'rubrics') => void;
+  activeTab: 'analysis' | 'documents' | 'profiles';
+  setActiveTab: (tab: 'analysis' | 'documents' | 'profiles') => void;
   onLogout: () => void;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

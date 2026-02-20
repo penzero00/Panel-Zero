@@ -199,6 +199,11 @@ def route_handler():
 - ✅ **ALWAYS** enforce RLS on Supabase database tables and storage buckets.
 - A user's `auth.uid()` must explicitly match the `owner_id` column to read or download a document.
 
+### Storage Buckets:
+
+- `thesis-drafts`: DOCX uploads (owner-only access).
+- `profile-avatars`: Profile pictures (public read recommended; write/delete limited to object owner).
+
 ### Zero-Retention:
 
 - Do not store files indefinitely.

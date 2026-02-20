@@ -13,8 +13,8 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('dr.smith@university.edu');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -105,6 +105,17 @@ export default function LoginPage() {
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : 'Authenticate via Supabase'}
             </button>
+
+            <div className="text-center text-sm text-slate-600">
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/signup')}
+                className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+              >
+                Sign Up
+              </button>
+            </div>
           </form>
         </div>
       </div>

@@ -9,6 +9,7 @@ from flask_cors import CORS
 from core.config import settings
 from api.documents import documents_bp
 from api.analysis import analysis_bp
+from api.agent_profiles import agent_profiles_bp
 
 app = Flask(__name__)
 
@@ -22,6 +23,7 @@ CORS(
 # Register blueprints
 app.register_blueprint(documents_bp)
 app.register_blueprint(analysis_bp)
+app.register_blueprint(agent_profiles_bp)
 
 
 @app.route("/api/health", methods=["GET"])
@@ -52,6 +54,7 @@ def docs():
             "health": "GET /api/health",
             "documents": "POST /api/v1/documents/upload",
             "analysis": "POST /api/v1/analysis/start",
+            "agent_profiles": "GET /api/v1/agent-profiles",
         },
     }
 

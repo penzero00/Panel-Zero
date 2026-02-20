@@ -3,6 +3,8 @@
  * All requests MUST use TanStack Query - never use raw fetch() or useState for async operations
  */
 
+import type { AgentProfile } from '@/types/index';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface ApiRequestConfig {
@@ -99,14 +101,42 @@ export class ApiClient {
     return `${this.baseUrl}/analysis/download/${taskId}`;
   }
 
-  // Rubric endpoints
-  listRubrics(token: string) {
-    return this.request('/rubrics', { token });
+  // Agent Profile endpoints
+  listAgentProfiles(token: string): Promise<AgentProfile[]> {
+    return this.request<AgentProfile[]>('/api/v1/agent-profiles', { token });
   }
 
-  setActiveRubric(rubricId: string, token: string) {
-    return this.request(`/rubrics/${rubricId}/activate`, {
+  listAgentProfilesByRole(role: string, token: string): Promise<AgentProfile[]> {
+    return this.request<AgentProfile[]>(`/api/v1/agent-profiles/role/${role}`, { token });
+  }
+
+  createAgentProfile(profile: unknown, token: string) {
+    return this.request('/api/v1/agent-profiles', {
+      method: 'POST',
+      body: profile,
+      token,
+    });
+  }
+
+  updateAgentProfile(id: string, profile: unknown, token: string) {
+    return this.request(`/api/v1/agent-profiles/${id}`, {
       method: 'PUT',
+      body: profile,
+      token,
+    });
+  }
+
+  deleteAgentProfile(id: string, token: string) {
+    return this.request(`/api/v1/agent-profiles/${id}`, {
+      method: 'DELETE',
+      token,
+    });
+  }
+
+  setActiveAgentProfile(profileId: string, agentRole: string, token: string) {
+    return this.request(`/api/v1/agent-profiles/${profileId}/activate`, {
+      method: 'PUT',
+      body: { agent_role: agentRole },
       token,
     });
   }

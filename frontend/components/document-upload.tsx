@@ -50,14 +50,13 @@ export function DocumentUpload({
       }`}
     >
       <div className="flex items-center gap-4 mb-6">
-        <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg transition-colors ${
-            file ? 'bg-green-100 text-green-700 shadow-inner' : 'bg-blue-100 text-blue-700 shadow-inner'
-          }`}
-        >
-          1
+        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+          <FileText size={20} />
         </div>
-        <h3 className="text-xl font-bold text-slate-800">Document Ingestion</h3>
+        <div>
+          <h3 className="text-xl font-bold text-slate-800">Document Ingestion</h3>
+          <p className="text-sm text-slate-500 mt-0.5">Upload your thesis draft for analysis</p>
+        </div>
       </div>
 
       {errorMessage && (

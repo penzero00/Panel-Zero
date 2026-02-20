@@ -16,7 +16,7 @@ interface DocumentPreviewProps {
 
 export function DocumentPreview({ fileName, onDownload, onReset }: DocumentPreviewProps) {
   return (
-    <div className="mt-8 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-sm scroll-mt-24">
+    <div id="result-preview" className="mt-8 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-sm scroll-mt-24">
       <div className="bg-slate-200/80 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-300 gap-4">
         <div className="flex items-center gap-2 text-sm text-slate-800 font-bold">
           <Eye size={16} className="text-slate-600" />

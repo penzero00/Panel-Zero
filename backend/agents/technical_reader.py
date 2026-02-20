@@ -9,7 +9,7 @@ class TechnicalReaderAgent(BytezExecutor):
     Panelist Agent: Focuses on methodology, code quality, and technical correctness (via Bytez AI),
     AND performs Zero-Tolerance Format Checking (via python-docx).
     """
-    def __init__(self, docx_path: Optional[str] = None, rubric: Optional[Dict[str, Any]] = None):
+    def __init__(self, docx_path: Optional[str] = None, agent_profile: Optional[Dict[str, Any]] = None):
         super().__init__()
         
         # 1. Structural/Formatting Setup
@@ -19,7 +19,7 @@ class TechnicalReaderAgent(BytezExecutor):
         else:
             self.doc = None
             
-        self.rubric = rubric or {}
+        self.agent_profile = agent_profile or {}
         self.errors: List[Dict[str, Any]] = []
 
         # 2. AI Executor Setup
@@ -32,15 +32,15 @@ class TechnicalReaderAgent(BytezExecutor):
         )
 
     def check_margins(self) -> Dict[str, Any]:
-        """Check page margins against rubric"""
+        """Check page margins against agent profile"""
         if not self.doc:
             return {"success": True, "error": "No docx file provided for margin checking."}
             
         requirements = {
-            "left": self.rubric.get("margin_left_inches", 1.5),
-            "right": self.rubric.get("margin_right_inches", 1.0),
-            "top": self.rubric.get("margin_top_inches", 1.0),
-            "bottom": self.rubric.get("margin_bottom_inches", 1.0),
+            "left": self.agent_profile.get("margin_left_inches", 1.5),
+            "right": self.agent_profile.get("margin_right_inches", 1.0),
+            "top": self.agent_profile.get("margin_top_inches", 1.0),
+            "bottom": self.agent_profile.get("margin_bottom_inches", 1.0),
         }
 
         if not self.doc.sections:
@@ -76,8 +76,8 @@ class TechnicalReaderAgent(BytezExecutor):
             return {"success": True, "error": "No docx file provided for font checking."}
             
         requirements = {
-            "font_family": self.rubric.get("font_family", "Times New Roman"),
-            "font_size": self.rubric.get("font_size", 12),
+            "font_family": self.agent_profile.get("font_family", "Times New Roman"),
+            "font_size": self.agent_profile.get("font_size", 12),
         }
 
         violations = []
