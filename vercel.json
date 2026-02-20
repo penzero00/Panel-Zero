@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm --filter=panelzero-frontend build",
+  "outputDirectory": "frontend/.next",
   "framework": "nextjs",
   "functions": {
     "api/**/*.py": {
