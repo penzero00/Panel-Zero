@@ -3,15 +3,6 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "frontend/.next",
   "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "BYTEZ_API_KEY": "@bytez_api_key"
-  },
   "functions": {
     "api/**/*.py": {
       "runtime": "python3.11"
