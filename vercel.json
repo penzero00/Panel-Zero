@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "public": false,
+  "buildCommand": "pnpm build",
+  "outputDirectory": ".vercel/output",
+  "env": {
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "GOOGLE_API_KEY": "@google_api_key",
+    "DEBUG": "False"
+  },
+  "functions": {
+    "backend/**/*.py": {
+      "runtime": "python3.11",
+      "environment": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "backend/main.py"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+        }
+      ]
+    }
+  ]
+}

@@ -15,12 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: cd backend && pip install -r requirements.txt
 
+      - name: Check for syntax errors
+        run: cd backend && python -m py_compile api/documents.py api/analysis.py main.py core/config.py
+
+      - name: Verify Flask app initialization
+        env:
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_SERVICE_KEY: "test-key"
+          SUPABASE_ANON_KEY: "test-anon-key"
+          BYTEZ_API_KEY: "test-bytez-key"
+        run: cd backend && python -c "from main import app; print('✓ Flask app loaded successfully')"

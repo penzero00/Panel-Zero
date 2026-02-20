@@ -1,93 +1,92 @@
 """
-FastAPI Routes for Document Management
+Flask Routes for Document Management
 Handles file upload and storage via Supabase
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from fastapi.responses import FileResponse
-from typing import List, Dict, Any
+from flask import Blueprint, request, jsonify, send_file
+from typing import Dict, Any
 from supabase import create_client
 from core.config import settings
 import uuid
 import os
 
-# Updated prefix to match standard API versioning
-router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+documents_bp = Blueprint("documents", __name__, url_prefix="/api/v1/documents")
 
 def get_supabase():
     """Get Supabase client connected to the live project"""
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
-@router.post("/upload")
-async def upload_document(
-    file: UploadFile = File(...),
-    user_id: str = "current_user",  # In production, extract this from a JWT token
-    supabase=Depends(get_supabase),
-) -> Dict[str, Any]:
+@documents_bp.route("/upload", methods=["POST"])
+def upload_document():
     """
     Upload a DOCX file with strict validation to Supabase.
     """
-    
-    # 1. Dynamic Extension Validation (Using .env settings)
+    if "file" not in request.files:
+        return {"error": "No file provided"}, 400
+
+    file = request.files["file"]
+    user_id = request.form.get("user_id", "current_user") 
+
+    if not file.filename:
+        return {"error": "No filename"}, 400
+
+    # 1. Dynamic Extension Validation
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in settings.ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Strict Rule Violation: Invalid file type. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}",
-        )
+        return {
+            "error": f"Strict Rule Violation: Invalid file type. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+        }, 400
 
-    # 2. Check file size using the .env limit
+    # 2. Check file size
     max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
-    content = await file.read()
-    if len(content) > max_size:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds {settings.MAX_FILE_SIZE_MB}MB limit",
-        )
+    file_content = file.read()
+    if len(file_content) > max_size:
+        return {"error": f"File exceeds {settings.MAX_FILE_SIZE_MB}MB limit"}, 413
 
     try:
+        supabase = get_supabase()
+        
         # Generate unique file ID and Path
         file_id = str(uuid.uuid4())
         file_path = f"{user_id}/{file_id}/{file.filename}"
 
         # Upload to Supabase Storage (RLS enforced)
-        response = supabase.storage.from_(settings.STORAGE_BUCKET_NAME).upload(
+        supabase.storage.from_(settings.STORAGE_BUCKET_NAME).upload(
             file_path,
-            content,
+            file_content,
             {"cacheControl": "3600", "upsert": "false"},
         )
 
         # Store metadata in PostgreSQL with RLS
-        doc_record = supabase.table("documents").insert({
+        supabase.table("documents").insert({
             "id": file_id,
             "owner_id": user_id,
             "name": file.filename,
             "file_path": file_path,
             "status": "pending",
             "created_at": "now()",
-            "expires_at": "now() + interval '1 hour'",  # Zero-retention policy
+            "expires_at": "now() + interval '1 hour'",
         }).execute()
 
         return {
             "file_id": file_id,
             "file_path": file_path,
             "message": "Document uploaded successfully to Supabase",
-        }
+        }, 201
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        return {"error": f"Upload failed: {str(e)}"}, 500
 
-@router.get("/{file_id}")
-async def get_document(
-    file_id: str,
-    user_id: str = "current_user",
-    supabase=Depends(get_supabase),
-) -> Dict[str, Any]:
+@documents_bp.route("/<file_id>", methods=["GET"])
+def get_document(file_id):
     """
     Retrieve document metadata.
     RLS ensures user can only access their own documents.
     """
+    user_id = request.args.get("user_id", "current_user")
+    
     try:
+        supabase = get_supabase()
         doc = (
             supabase.table("documents")
             .select("*")
@@ -98,21 +97,21 @@ async def get_document(
         )
 
         if not doc.data:
-            raise HTTPException(status_code=404, detail="Document not found")
+            return {"error": "Document not found"}, 404
 
-        return doc.data
+        return jsonify(doc.data), 200
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}, 500
 
-@router.get("")
-async def list_documents(
-    user_id: str = "current_user",
-    supabase=Depends(get_supabase),
-) -> List[Dict[str, Any]]:
+@documents_bp.route("", methods=["GET"])
+def list_documents():
     """
     List all documents owned by the user.
     """
+    user_id = request.args.get("user_id", "current_user")
+    
     try:
+        supabase = get_supabase()
         docs = (
             supabase.table("documents")
             .select("*")
@@ -120,20 +119,20 @@ async def list_documents(
             .order("created_at", desc=True)
             .execute()
         )
-        return docs.data or []
+        return jsonify(docs.data or []), 200
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}, 500
 
-@router.delete("/{file_id}")
-async def delete_document(
-    file_id: str,
-    user_id: str = "current_user",
-    supabase=Depends(get_supabase),
-) -> Dict[str, str]:
+@documents_bp.route("/<file_id>", methods=["DELETE"])
+def delete_document(file_id):
     """
     Delete a document from storage and database.
     """
+    user_id = request.args.get("user_id", "current_user")
+    
     try:
+        supabase = get_supabase()
+        
         # Get document to verify ownership
         doc = (
             supabase.table("documents")
@@ -145,7 +144,7 @@ async def delete_document(
         )
 
         if not doc.data:
-            raise HTTPException(status_code=404, detail="Document not found")
+            return {"error": "Document not found"}, 404
 
         # Delete from storage
         supabase.storage.from_(settings.STORAGE_BUCKET_NAME).remove([doc.data["file_path"]])
@@ -153,7 +152,7 @@ async def delete_document(
         # Delete from database
         supabase.table("documents").delete().eq("id", file_id).execute()
 
-        return {"message": "Document deleted successfully"}
+        return {"message": "Document deleted successfully"}, 200
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}, 500

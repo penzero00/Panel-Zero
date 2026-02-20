@@ -1,14 +1,13 @@
 /**
  * Header Component - Persistent navigation bar
- * Shows different tabs based on authentication state
- * Follows Next.js best practices with client-side interactivity
+ * Shows user profile dropdown and logo
  */
 
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { LogOut, UploadCloud, FolderOpen, Settings } from 'lucide-react';
+import { LogOut, User, Settings, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   isAuthenticated: boolean;
@@ -25,10 +24,24 @@ export function Header({
   userName = 'User',
   onLogout,
 }: HeaderProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-200/50 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
+      <div className="w-full px-6 h-16 flex items-center justify-between">
+        {/* Logo - Very Left */}
         <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-3 group">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center font-bold text-white shadow-md group-hover:shadow-blue-500/30 transition-all">
             P0
@@ -36,45 +49,7 @@ export function Header({
           <span className="font-bold text-lg tracking-tight text-slate-900">PanelZero</span>
         </Link>
 
-        {/* Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
-          {isAuthenticated && (
-            <>
-              <button
-                onClick={() => onTabChange('analysis')}
-                className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
-                  activeTab === 'analysis'
-                    ? 'text-blue-600'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <UploadCloud size={18} /> Analysis
-              </button>
-              <button
-                onClick={() => onTabChange('documents')}
-                className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
-                  activeTab === 'documents'
-                    ? 'text-blue-600'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <FolderOpen size={18} /> My Documents
-              </button>
-              <button
-                onClick={() => onTabChange('rubrics')}
-                className={`flex items-center gap-2 text-sm font-semibold transition-colors ${
-                  activeTab === 'rubrics'
-                    ? 'text-blue-600'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Settings size={18} /> Rubric Profiles
-              </button>
-            </>
-          )}
-        </nav>
-
-        {/* Auth Section */}
+        {/* Auth Section - Very Right */}
         <div className="flex items-center gap-4">
           {!isAuthenticated ? (
             <Link
@@ -84,14 +59,44 @@ export function Header({
               Sign In
             </Link>
           ) : (
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-slate-600 hidden sm:block">{userName}</span>
+            <div className="relative" ref={menuRef}>
               <button
-                onClick={onLogout}
-                className="text-sm font-medium text-slate-500 hover:text-red-500 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-red-50 px-3 py-1.5 rounded-lg"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-full transition-colors border border-transparent hover:border-slate-200"
               >
-                <LogOut size={16} /> <span className="hidden sm:block">Logout</span>
+                <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600">
+                  <User size={20} />
+                </div>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Dropdown Menu */}
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-in fade-in zoom-in duration-150">
+                  <div className="px-4 py-2 border-b border-slate-100 mb-1">
+                    <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Account</p>
+                    <p className="text-sm font-medium text-slate-900 truncate">{userName}</p>
+                  </div>
+                  
+                  <Link 
+                    href="/settings" 
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Settings size={16} /> Account Settings
+                  </Link>
+                  
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

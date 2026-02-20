@@ -1,141 +1,109 @@
 """
-FastAPI Routes for Analysis Execution
-Triggers Celery tasks and polls status
+Flask Routes for Analysis Execution
+Processes documents synchronously for Vercel serverless deployment
+Removed Celery task queue for Windows compatibility
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse
-from typing import Dict, Any, Optional
-from celery.result import AsyncResult
+from flask import Blueprint, request, jsonify, send_file
+from typing import Dict, Any
 from agents.technical_reader import TechnicalReaderAgent
+from supabase import create_client
+from core.config import settings
 import uuid
-import json
 import os
+import tempfile
 
-# Assuming AgentRole is defined elsewhere in your project
-# from agents import AgentRole, AgentConfig
-# from document import ChapterExtractor
+analysis_bp = Blueprint("analysis", __name__, url_prefix="/api/v1/analysis")
 
-router = APIRouter(prefix="/api/v1/analysis", tags=["Analysis"])
+def get_supabase():
+    """Get Supabase client connected to the live project"""
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
-# This would be the Celery app in production
-# from worker import celery_app
-
-
-@router.post("/start")
-async def start_analysis(
-    request: Dict[str, Any],
-    background_tasks: BackgroundTasks,
-) -> Dict[str, str]:
+@analysis_bp.route("/start", methods=["POST"])
+def start_analysis():
     """
-    Start an analysis task for a given file and agent role.
-    Returns immediately with task_id while Celery processes in background.
+    Start analysis for a given file and agent role.
+    Processes synchronously (suitable for Vercel serverless).
     
-    Per AGENTS.md: FastAPI returns task_id immediately,
-    Celery handles long document processing asynchronously.
+    For long-running tasks, consider implementing streaming responses
+    or requesting timeout increase from Vercel.
     """
-    
-    file_id = request.get("file_id")
-    agent_role = request.get("agent_role")
-    
-    if not file_id or not agent_role:
-        raise HTTPException(status_code=400, detail="Missing file_id or agent_role")
-
-    # Generate task ID
-    task_id = str(uuid.uuid4())
-
-    # In production, this would dispatch to Celery:
-    # task = celery_app.send_task(
-    #     "tasks.run_analysis",
-    #     args=[file_id, agent_role],
-    #     task_id=task_id,
-    # )
-
-    return {
-        "task_id": task_id,
-        "status": "queued",
-        "message": f"Analysis queued for agent: {agent_role}",
-    }
-
-
-@router.get("/status/{task_id}")
-async def get_analysis_status(task_id: str) -> Dict[str, Any]:
-    """
-    Poll the status of an analysis task.
-    Returns progress, status, and results when complete.
-    """
-    
-    # In production, retrieve from Celery:
-    # task_result = AsyncResult(task_id, app=celery_app)
-    
-    # Mock response for demonstration
-    return {
-        "task_id": task_id,
-        "status": "processing",
-        "progress": 45,
-        "message": "Executing surgical XML injection safely...",
-    }
-
-
-@router.get("/download/{task_id}")
-async def download_processed_file(task_id: str) -> FileResponse:
-    """
-    Download the processed DOCX file after analysis is complete.
-    Enforces RLS via task ownership validation.
-    """
-    
-    # In production, verify the task belongs to the authenticated user
-    # and retrieve the file path from Supabase
-    
-    # Mock file path
-    file_path = f"/tmp/{task_id}_REVIEWED.docx"
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Processed file not found")
-
-    return FileResponse(
-        file_path,
-        filename=f"thesis_REVIEWED.docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-
-
-@router.post("/manual-test")
-async def manual_test_analysis(
-    request: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Manual testing endpoint for analysis without async.
-    Useful for development and debugging the Bytez AI integration.
-    """
-    
-    file_path = request.get("file_path")
-    document_text = request.get("document_text", "") # Send text here for AI review
-    agent_role = request.get("agent_role", "tech")
-    rubric = request.get("rubric", {})
-
     try:
-        if agent_role == "tech":
-            # 1. Initialize our new Hybrid Technical Reader Agent
-            agent = TechnicalReaderAgent(docx_path=file_path, rubric=rubric)
-            
-            # 2. MUST AWAIT because run_analysis now uses the async Bytez SDK
-            results = await agent.run_analysis(document_content=document_text)
-        else:
-            # Other agents would be tested similarly
-            results = {
-                "agent": agent_role,
-                "message": f"Manual test for {agent_role} agent",
-                "status": "testing",
-            }
+        data = request.get_json()
+        file_id = data.get("file_id")
+        agent_role = data.get("agent_role")
+        user_id = data.get("user_id", "current_user")
+        
+        if not file_id or not agent_role:
+            return {"error": "Missing file_id or agent_role"}, 400
 
+        supabase = get_supabase()
+        
+        # Retrieve document from Supabase
+        doc = (
+            supabase.table("documents")
+            .select("*")
+            .eq("id", file_id)
+            .eq("owner_id", user_id)
+            .single()
+            .execute()
+        )
+        
+        if not doc.data:
+            return {"error": "Document not found"}, 404
+
+        # Download file from Supabase
+        file_path = doc.data["file_path"]
+        file_data = supabase.storage.from_(settings.STORAGE_BUCKET_NAME).download(file_path)
+
+        # Generate task ID for tracking
+        task_id = str(uuid.uuid4())
+
+        # Process based on agent role
+        result = None
+        if agent_role == "technical_reader":
+            agent = TechnicalReaderAgent()
+            result = agent.analyze(file_data)
+        else:
+            return {"error": f"Unknown agent role: {agent_role}"}, 400
+
+        # Save processed result (in production, store in Supabase)
+        # For now, return the analysis result
         return {
-            "success": True,
-            "results": results,
-        }
+            "task_id": task_id,
+            "file_id": file_id,
+            "agent_role": agent_role,
+            "status": "completed",
+            "result": result,
+        }, 200
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-        }
+        return {"error": f"Analysis failed: {str(e)}"}, 500
+
+@analysis_bp.route("/status/<task_id>", methods=["GET"])
+def get_analysis_status(task_id):
+    """
+    Get the status of an analysis task.
+    Since we're processing synchronously, tasks are either completed or not found.
+    """
+    # In a production system with async processing, this would check a database
+    return {
+        "task_id": task_id,
+        "status": "completed",
+        "message": "Task processing completed"
+    }, 200
+
+@analysis_bp.route("/download/<task_id>", methods=["GET"])
+def download_processed_file(task_id):
+    """
+    Download the processed DOCX file after analysis.
+    """
+    user_id = request.args.get("user_id", "current_user")
+    
+    try:
+        # In production, retrieve from Supabase based on task_id
+        # For now, return 404 as this needs to be integrated with your storage
+        return {"error": "Processed file not found"}, 404
+
+    except Exception as e:
+        return {"error": str(e)}, 500

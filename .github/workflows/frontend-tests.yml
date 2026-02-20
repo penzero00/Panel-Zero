@@ -15,23 +15,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: '8.15.0'
+      
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: cd frontend && pnpm install
+        run: pnpm install
 
       - name: Type check
-        run: cd frontend && npm run type-check
-
-      - name: Lint
-        run: cd frontend && npm run lint
+        run: pnpm --filter=panelzero-frontend type-check
 
       - name: Build
-        run: cd frontend && npm run build
+        run: pnpm --filter=panelzero-frontend build

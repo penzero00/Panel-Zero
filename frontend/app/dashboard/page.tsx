@@ -8,8 +8,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, PlusCircle, FileText, Download, Eye } from 'lucide-react';
+import { Settings, PlusCircle, FileText, Download, Eye, Menu } from 'lucide-react';
 import { Header } from '@/components/header';
+import { Sidebar } from '@/components/sidebar';
 import { DocumentUpload } from '@/components/document-upload';
 import { AgentRoleSelector } from '@/components/agent-role-selector';
 import { ExecutionPipeline } from '@/components/execution-pipeline';
@@ -299,8 +300,16 @@ function DashboardLayout({
   setActiveTab: (tab: 'analysis' | 'documents' | 'rubrics') => void;
   onLogout: () => void;
 }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
       <Header
         isAuthenticated={true}
         activeTab={activeTab}
@@ -309,6 +318,14 @@ function DashboardLayout({
         onLogout={onLogout}
       />
       <div className="flex-1 w-full max-w-6xl mx-auto px-6 py-8 mt-16 relative">
+        {/* Floating Menu Button */}
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="fixed top-20 left-6 z-30 p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+          aria-label="Open menu"
+        >
+          <Menu size={20} className="text-slate-700" />
+        </button>
         {children}
       </div>
     </div>
