@@ -7,13 +7,16 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from typing import Dict, Any, Optional
 from celery.result import AsyncResult
-from agents import AgentRole, AgentConfig
 from agents.technical_reader import TechnicalReaderAgent
-from document import ChapterExtractor
 import uuid
 import json
+import os
 
-router = APIRouter(prefix="/analysis", tags=["analysis"])
+# Assuming AgentRole is defined elsewhere in your project
+# from agents import AgentRole, AgentConfig
+# from document import ChapterExtractor
+
+router = APIRouter(prefix="/api/v1/analysis", tags=["Analysis"])
 
 # This would be the Celery app in production
 # from worker import celery_app
@@ -38,12 +41,6 @@ async def start_analysis(
     if not file_id or not agent_role:
         raise HTTPException(status_code=400, detail="Missing file_id or agent_role")
 
-    # Validate agent role
-    try:
-        role = AgentRole(agent_role)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid agent role: {agent_role}")
-
     # Generate task ID
     task_id = str(uuid.uuid4())
 
@@ -57,7 +54,7 @@ async def start_analysis(
     return {
         "task_id": task_id,
         "status": "queued",
-        "message": f"Analysis queued for agent: {role.value}",
+        "message": f"Analysis queued for agent: {agent_role}",
     }
 
 
@@ -109,18 +106,21 @@ async def manual_test_analysis(
 ) -> Dict[str, Any]:
     """
     Manual testing endpoint for analysis without async.
-    Useful for development and debugging.
+    Useful for development and debugging the Bytez AI integration.
     """
     
     file_path = request.get("file_path")
+    document_text = request.get("document_text", "") # Send text here for AI review
     agent_role = request.get("agent_role", "tech")
     rubric = request.get("rubric", {})
 
     try:
         if agent_role == "tech":
-            # Test Technical Reader (Pure Python)
-            agent = TechnicalReaderAgent(file_path, rubric)
-            results = agent.run_analysis()
+            # 1. Initialize our new Hybrid Technical Reader Agent
+            agent = TechnicalReaderAgent(docx_path=file_path, rubric=rubric)
+            
+            # 2. MUST AWAIT because run_analysis now uses the async Bytez SDK
+            results = await agent.run_analysis(document_content=document_text)
         else:
             # Other agents would be tested similarly
             results = {
@@ -139,6 +139,3 @@ async def manual_test_analysis(
             "success": False,
             "error": str(e),
         }
-
-
-import os
