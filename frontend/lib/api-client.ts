@@ -45,7 +45,7 @@ export class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
+      throw new Error(errorData.detail || errorData.error || `HTTP ${response.status}`);
     }
 
     return response.json();
@@ -58,7 +58,7 @@ export class ApiClient {
     const formData = new FormData();
     formData.append('file', file);
 
-    const fullUrl = `${this.baseUrl}/documents/upload`;
+    const fullUrl = `${this.baseUrl}/api/v1/documents/upload`;
     const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
@@ -69,36 +69,68 @@ export class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || 'Upload failed');
+      throw new Error(errorData.detail || errorData.error || 'Upload failed');
     }
 
     return response.json();
   }
 
-  // Document endpoints
-  listDocuments(token: string) {
-    return this.request('/documents', { token });
+  // User Profile endpoints
+  getCurrentUserProfile(token: string) {
+    return this.request('/api/v1/user-profiles', { token });
   }
 
-  getDocument(fileId: string, token: string) {
-    return this.request(`/documents/${fileId}`, { token });
-  }
-
-  // Analysis endpoints
-  startAnalysis(fileId: string, agentRole: string, token: string) {
-    return this.request('/analysis/start', {
+  createUserProfile(fullName: string, institution: string, token: string) {
+    return this.request('/api/v1/user-profiles', {
       method: 'POST',
-      body: { file_id: fileId, agent_role: agentRole },
+      body: { full_name: fullName, institution, role: 'student' },
       token,
     });
   }
 
-  getAnalysisStatus(taskId: string, token: string) {
-    return this.request(`/analysis/status/${taskId}`, { token });
+  updateUserProfile(updates: Record<string, any>, token: string) {
+    return this.request('/api/v1/user-profiles', {
+      method: 'PUT',
+      body: updates,
+      token,
+    });
+  }
+
+  // Document endpoints
+  listDocuments(token: string) {
+    return this.request('/api/v1/documents', { token });
+  }
+
+  getDocument(fileId: string, token: string) {
+    return this.request(`/api/v1/documents/${fileId}`, { token });
+  }
+
+  deleteDocument(fileId: string, token: string) {
+    return this.request(`/api/v1/documents/${fileId}`, {
+      method: 'DELETE',
+      token,
+    });
+  }
+
+  // Analysis endpoints
+  startAnalysis(fileId: string, agentRole: string, token: string, profileId?: string): Promise<any> {
+    return this.request('/api/v1/analysis/start', {
+      method: 'POST',
+      body: { 
+        file_id: fileId, 
+        agent_role: agentRole,
+        ...(profileId && { profile_id: profileId })
+      },
+      token,
+    });
+  }
+
+  getAnalysisStatus(taskId: string, token: string): Promise<any> {
+    return this.request(`/api/v1/analysis/status/${taskId}`, { token });
   }
 
   downloadProcessedFile(taskId: string, token: string) {
-    return `${this.baseUrl}/analysis/download/${taskId}`;
+    return `${this.baseUrl}/api/v1/analysis/download/${taskId}`;
   }
 
   // Agent Profile endpoints
@@ -140,6 +172,7 @@ export class ApiClient {
       token,
     });
   }
+
 }
 
 export const apiClient = new ApiClient();

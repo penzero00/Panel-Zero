@@ -6,7 +6,8 @@
 'use client';
 
 import React from 'react';
-import { UploadCloud, FolderOpen, Settings, X } from 'lucide-react';
+import Link from 'next/link';
+import { Home, UploadCloud, FolderOpen, Settings, X } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -41,6 +42,16 @@ export function Sidebar({ isOpen, onClose, activeTab, onTabChange }: SidebarProp
           {/* Navigation Items */}
           <nav className="flex-1 px-4 py-6">
             <ul className="space-y-2">
+              <li>
+                <Link
+                  href="/"
+                  onClick={onClose}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all text-slate-700 hover:bg-slate-50"
+                >
+                  <Home size={20} />
+                  <span>Home</span>
+                </Link>
+              </li>
               <li>
                 <button
                   onClick={() => handleTabClick('analysis')}

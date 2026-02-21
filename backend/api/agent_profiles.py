@@ -18,7 +18,7 @@ DEFAULT_PROFILES = [
     {
         "agent_role": "tech",
         "name": "Technical Reader Default",
-        "description": "Standard technical analysis profile with strict formatting",
+        "custom_instruction": "Standard technical analysis profile with strict formatting",
         "font_family": "Times New Roman",
         "font_size": 12,
         "margin_left_inches": 1.5,
@@ -30,11 +30,13 @@ DEFAULT_PROFILES = [
         "check_passive_voice": True,
         "check_tense_consistency": True,
         "preferred_citation_style": "IEEE",
+        "enable_grammar_check": True,
+        "enable_spacing_check": True,
     },
     {
         "agent_role": "grammar",
         "name": "Grammar Critic Default",
-        "description": "Comprehensive grammar and language checking profile",
+        "custom_instruction": "Comprehensive grammar and language checking profile",
         "font_family": "Times New Roman",
         "font_size": 12,
         "margin_left_inches": 1.0,
@@ -47,11 +49,13 @@ DEFAULT_PROFILES = [
         "check_subject_verb_agreement": True,
         "check_sentence_fragments": True,
         "preferred_citation_style": "APA 7th",
+        "enable_grammar_check": True,
+        "enable_spacing_check": True,
     },
     {
         "agent_role": "stats",
         "name": "Statistician Default",
-        "description": "Statistical methods and data analysis profile",
+        "custom_instruction": "Statistical methods and data analysis profile",
         "font_family": "Arial",
         "font_size": 11,
         "margin_left_inches": 1.0,
@@ -61,11 +65,13 @@ DEFAULT_PROFILES = [
         "line_spacing": 1.5,
         "image_min_dpi": 300,
         "preferred_citation_style": "APA 7th",
+        "enable_grammar_check": True,
+        "enable_spacing_check": True,
     },
     {
         "agent_role": "subject",
         "name": "Subject Expert Default",
-        "description": "Subject matter expertise and content analysis profile",
+        "custom_instruction": "Subject matter expertise and content analysis profile",
         "font_family": "Times New Roman",
         "font_size": 12,
         "margin_left_inches": 1.0,
@@ -74,11 +80,13 @@ DEFAULT_PROFILES = [
         "margin_bottom_inches": 1.0,
         "line_spacing": 2.0,
         "preferred_citation_style": "APA 7th",
+        "enable_grammar_check": True,
+        "enable_spacing_check": True,
     },
     {
         "agent_role": "chairman",
         "name": "Panel Chairman Default",
-        "description": "Overall thesis quality and defense preparation profile",
+        "custom_instruction": "Overall thesis quality and defense preparation profile",
         "font_family": "Times New Roman",
         "font_size": 12,
         "margin_left_inches": 1.0,
@@ -88,6 +96,8 @@ DEFAULT_PROFILES = [
         "line_spacing": 2.0,
         "paragraph_alignment": "justify",
         "preferred_citation_style": "APA 7th",
+        "enable_grammar_check": True,
+        "enable_spacing_check": True,
     },
 ]
 
@@ -240,7 +250,7 @@ def create_agent_profile():
             "owner_id": user_id,
             "agent_role": data["agent_role"],
             "name": data["name"],
-            "description": data.get("description", ""),
+            "custom_instruction": data.get("custom_instruction", ""),
             
             # Font preferences (DOCX-compatible)
             "font_family": data.get("font_family", "Times New Roman"),
@@ -271,11 +281,13 @@ def create_agent_profile():
             "check_subject_verb_agreement": data.get("check_subject_verb_agreement", True),
             "check_sentence_fragments": data.get("check_sentence_fragments", True),
             "preferred_citation_style": data.get("preferred_citation_style", "APA 7th"),
+            "enable_grammar_check": data.get("enable_grammar_check", True),
             
             # Spacing preferences
             "add_space_after_period": data.get("add_space_after_period", True),
             "add_space_after_comma": data.get("add_space_after_comma", True),
             "check_double_spaces": data.get("check_double_spaces", True),
+            "enable_spacing_check": data.get("enable_spacing_check", True),
             
             # Metadata
             "is_active": False,
@@ -339,9 +351,13 @@ def update_agent_profile(profile_id: str):
         if not existing.data:
             return {"error": "Profile not found or not authorized to update"}, 404
         
-        # Prepare update data
+        # Prepare update data - ensure custom_instruction is included
         update_data = {**data}
         update_data["updated_at"] = datetime.utcnow().isoformat()
+        
+        # Ensure all expected fields are present
+        if "custom_instruction" not in update_data:
+            update_data["custom_instruction"] = ""
         
         # Remove fields that shouldn't be updated
         update_data.pop("id", None)

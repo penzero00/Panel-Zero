@@ -1,7 +1,6 @@
 /**
- * Agent Role Selector Component
- * Displays as a compact dropdown menu for role selection
- * Follows AGENTS.md: Smart LLM Routing
+ * Agent Profile Selector Component
+ * Displays as a compact dropdown menu for profile selection
  */
 
 'use client';
@@ -19,61 +18,55 @@ import {
 } from 'lucide-react';
 import type { AgentRole, AgentProfile } from '@/types/index';
 
-const AGENT_ROLES = [
-  {
-    id: 'tech' as AgentRole,
+const ROLE_META: Record<AgentRole, { name: string; icon: typeof ShieldAlert; desc: string }> = {
+  tech: {
     name: 'Technical Reader',
     icon: ShieldAlert,
     desc: 'Strict format, margins, and font checking. (Pure Python)',
   },
-  {
-    id: 'grammar' as AgentRole,
+  grammar: {
     name: 'Language Critic',
     icon: FileText,
     desc: 'Tense consistency and syntax. (Gemini 1.5 Flash)',
   },
-  {
-    id: 'stats' as AgentRole,
+  stats: {
     name: 'Statistician',
     icon: BarChart,
     desc: 'Data logic and table format verification. (Gemini 1.5 Pro)',
   },
-  {
-    id: 'subject' as AgentRole,
+  subject: {
     name: 'Subject Specialist',
     icon: BookOpen,
     desc: 'Content coherence and logic checking. (GPT-4o)',
   },
-  {
-    id: 'chairman' as AgentRole,
+  chairman: {
     name: 'Chairman',
     icon: Gavel,
     desc: 'Consolidated report synthesis. Requires previous agent runs.',
   },
-];
+};
+
+const ROLE_ORDER: AgentRole[] = ['tech', 'grammar', 'stats', 'subject', 'chairman'];
 
 interface AgentRoleSelectorProps {
-  selectedRole: AgentRole | '';
-  onRoleSelect: (role: AgentRole) => void;
+  selectedProfileId: string | null;
+  onProfileSelect: (profile: AgentProfile) => void;
   disabled?: boolean;
   agentProfiles?: AgentProfile[];
 }
 
 export function AgentRoleSelector({
-  selectedRole,
-  onRoleSelect,
+  selectedProfileId,
+  onProfileSelect,
   disabled = false,
   agentProfiles = [],
 }: AgentRoleSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const getActiveProfile = (roleId: AgentRole): AgentProfile | undefined => {
-    return agentProfiles.find((p) => p.agent_role === roleId && p.is_active);
-  };
-
-  const selectedRoleData = AGENT_ROLES.find((r) => r.id === selectedRole);
-  const activeProfile = selectedRole ? getActiveProfile(selectedRole as AgentRole) : undefined;
+  const selectedProfile = selectedProfileId
+    ? agentProfiles.find((profile) => profile.id === selectedProfileId)
+    : undefined;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -87,8 +80,8 @@ export function AgentRoleSelector({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleRoleSelect = (role: AgentRole) => {
-    onRoleSelect(role);
+  const handleProfileSelect = (profile: AgentProfile) => {
+    onProfileSelect(profile);
     setIsOpen(false);
   };
 
@@ -101,9 +94,9 @@ export function AgentRoleSelector({
           </div>
           <div>
             <label className="text-xl font-bold text-slate-800 block">
-              Select Agent Role
+              Select Agent Profile
             </label>
-            <p className="text-sm text-slate-500 mt-0.5">Choose a panelist role for analysis</p>
+            <p className="text-sm text-slate-500 mt-0.5">Choose a profile with your preferred settings</p>
           </div>
         </div>
         
@@ -122,15 +115,23 @@ export function AgentRoleSelector({
             }`}
           >
             <div className="flex items-center gap-3">
-              {selectedRoleData ? (
+              {selectedProfile ? (
                 <>
                   <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
-                    <selectedRoleData.icon size={16} />
+                    {(() => {
+                      const RoleIcon = ROLE_META[selectedProfile.agent_role].icon;
+                      return <RoleIcon size={16} />;
+                    })()}
                   </div>
-                  <span className="text-sm">{selectedRoleData.name}</span>
+                  <div className="text-left">
+                    <span className="text-sm font-semibold block">{selectedProfile.name}</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {ROLE_META[selectedProfile.agent_role].name}
+                    </span>
+                  </div>
                 </>
               ) : (
-                <span className="text-slate-500 text-sm">-- Select a role --</span>
+                <span className="text-slate-500 text-sm">-- Select a profile --</span>
               )}
             </div>
             <ChevronDown 
@@ -143,40 +144,64 @@ export function AgentRoleSelector({
           {isOpen && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="max-h-[380px] overflow-y-auto">
-                {AGENT_ROLES.map((role) => {
-                  const Icon = role.icon;
-                  const isSelected = selectedRole === role.id;
-                  
+                {ROLE_ORDER.map((role) => {
+                  const roleProfiles = agentProfiles.filter((profile) => profile.agent_role === role);
+                  if (roleProfiles.length === 0) return null;
+
+                  const RoleIcon = ROLE_META[role].icon;
+
                   return (
-                    <button
-                      key={role.id}
-                      type="button"
-                      onClick={() => handleRoleSelect(role.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all ${
-                        isSelected 
-                          ? 'bg-blue-50 text-blue-900 border-l-4 border-blue-600' 
-                          : 'hover:bg-slate-50 border-l-4 border-transparent'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-lg shrink-0 ${
-                        isSelected 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        <Icon size={18} />
+                    <div key={role} className="border-b border-slate-100 last:border-b-0">
+                      <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50">
+                        {ROLE_META[role].name}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{role.name}</span>
-                          {isSelected && (
-                            <Check size={16} className="text-blue-600 shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{role.desc}</p>
-                      </div>
-                    </button>
+                      {roleProfiles.map((profile) => {
+                        const isSelected = selectedProfileId === profile.id;
+                        return (
+                          <button
+                            key={profile.id}
+                            type="button"
+                            onClick={() => handleProfileSelect(profile)}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all ${
+                              isSelected
+                                ? 'bg-blue-50 text-blue-900 border-l-4 border-blue-600'
+                                : 'hover:bg-slate-50 border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className={`p-2 rounded-lg shrink-0 ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              <RoleIcon size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{profile.name}</span>
+                                {profile.is_default && (
+                                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                                    Default
+                                  </span>
+                                )}
+                                {isSelected && (
+                                  <Check size={16} className="text-blue-600 shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                                {profile.description || ROLE_META[role].desc}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   );
                 })}
+                {agentProfiles.length === 0 && (
+                  <div className="px-4 py-6 text-center text-sm text-slate-500">
+                    No profiles available. Create one in Settings.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -184,38 +209,30 @@ export function AgentRoleSelector({
       </div>
 
       {/* Selected Role Details */}
-      {selectedRoleData && (
+      {selectedProfile && (
         <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-xl border border-blue-200 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-blue-600 text-white rounded-lg shrink-0">
-              <selectedRoleData.icon size={18} />
+              {(() => {
+                const RoleIcon = ROLE_META[selectedProfile.agent_role].icon;
+                return <RoleIcon size={18} />;
+              })()}
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-blue-900 mb-1">{selectedRoleData.name}</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">{selectedRoleData.desc}</p>
-              
-              {/* Active Profile Badge */}
-              {activeProfile && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <div className="flex items-center gap-2 text-xs">
-                    <CheckCircle2 size={14} className="text-green-600" />
-                    <span className="text-slate-700">
-                      <span className="font-semibold text-green-700">Active Profile:</span> {activeProfile.name}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[10px] text-slate-500">
-                    {activeProfile.font_family} {activeProfile.font_size}pt • {activeProfile.preferred_citation_style}
-                  </div>
+              <h4 className="font-bold text-blue-900 mb-1">{selectedProfile.name}</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">{ROLE_META[selectedProfile.agent_role].desc}</p>
+
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle2 size={14} className="text-green-600" />
+                  <span className="text-slate-700">
+                    <span className="font-semibold text-green-700">Profile:</span> {selectedProfile.name}
+                  </span>
                 </div>
-              )}
-              
-              {!activeProfile && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <div className="text-xs text-amber-600 font-medium">
-                    ⚠ No active profile set
-                  </div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {selectedProfile.font_family} {selectedProfile.font_size}pt • {selectedProfile.preferred_citation_style}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

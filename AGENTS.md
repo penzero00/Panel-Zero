@@ -54,6 +54,7 @@ This project is structured as a standard monorepo containing a frontend applicat
 - **Frontend (/frontend)**: Next.js 15 web application with React 19.
 - **Backend (/backend)**: Flask server (serverless-ready) handling the AI agents and document parsing.
 - **Database & Auth**: Supabase (PostgreSQL).
+- **Schema**: Single SQL source of truth at `backend/schema.sql` (includes tables, RLS, indexes, triggers, and default profile seeds).
 - **Processing**: Synchronous request-based processing (no task queue).
 
 ## 🏗️ Project Stack
@@ -138,6 +139,48 @@ docs: update LLM routing rules in agents.md
 - ✅ Route syntax and grammar checks to Gemini 1.5 Flash for speed and cost efficiency.
 - ✅ Route deep logical checks (Methodology vs Results) to GPT-4o or Gemini 1.5 Pro.
 
+#### Comprehensive Preference System:
+
+**NEW** - All agents now support cross-domain preferences from user profiles.
+
+- ✅ Each agent (Grammar Critic, Technical Reader, Statistician, Subject Matter Expert, Chairman) receives ALL enabled preferences from the profile, not just role-specific ones.
+- ✅ Preferences compiled include:
+  - **Font**: family, size, style, enable/disable flag
+  - **Margins**: left, right, top, bottom (in inches), enable/disable flag
+  - **Paragraph**: line spacing, alignment, spacing before/after, first-line indent, enable/disable flag
+  - **Image**: format, minimum DPI, maximum width, enable/disable flag
+  - **Grammar**: passive voice, tense consistency, subject-verb agreement, sentence fragments, spacing rules, citation style
+  - **Custom Instruction**: User-provided additional instructions for the agent
+
+- ✅ Implementation via `build_comprehensive_preferences()` in `LLMExecutor` base class:
+  ```python
+  # Each agent calls this during initialization
+  comprehensive_prefs = self.build_comprehensive_preferences(self.agent_profile)
+  if comprehensive_prefs:
+      base_system_prompt += f"\n\n{comprehensive_prefs}"
+  ```
+
+- ✅ Example: Statistician with Grammar Preferences + Custom Instruction:
+  - User selects "Statistician" agent role
+  - Profile has: grammar checks enabled, custom instruction = "Check carefully for methodological terminology consistency"
+  - Statistician agent's system prompt includes:
+    - Its core statistical/methodology analysis instructions
+    - Grammar & Style section (all enabled checks)
+    - Font, Margin, Paragraph, Image preferences
+    - Custom instruction appended at end
+  - Result: Statistician now checks grammar while analyzing methodology, ensuring consistency
+
+- ✅ Custom instructions ALWAYS appended as final section:
+  ```python
+  if custom_instruction:
+      self.system_prompt = f"{base_system_prompt}\n\nADDITIONAL INSTRUCTIONS:\n{custom_instruction}"
+  ```
+
+- ✅ **Mandatory Enforcement (ALL roles)**:
+  - Formatting checks (font, margins, paragraph, image) now run for every analysis role, not just Technical Reader.
+  - Grammar and spelling checks are always executed (even when the selected role is not Grammar Critic).
+  - All formatting violations are returned as issues with exact paragraph locations for highlighting.
+
 ### Frontend State Management
 
 🔒 **CRITICAL RULE**: ALL server requests MUST use TanStack Query.
@@ -146,6 +189,7 @@ docs: update LLM routing rules in agents.md
 
 - ✅ **ALWAYS** use TanStack Query for all backend Flask calls and Supabase data fetching.
 - ❌ **NEVER** use useState or useEffect to manage loading states or fetch server data.
+- ✅ **Realtime** updates should use Supabase Realtime subscriptions that invalidate TanStack Query caches.
 
 #### Component Conventions:
 
@@ -189,6 +233,22 @@ def route_handler():
     except Exception as e:
         return {"error": str(e)}, 500
 ```
+
+  #### API Endpoint Conventions:
+
+  - ✅ **ALL** API routes are under `/api/v1/*`.
+  - ✅ **ALL** protected routes must validate JWT from the `Authorization: Bearer <token>` header.
+  - ✅ **NEVER** accept user_id from client payloads or query parameters for protected resources.
+
+  ##### Required Endpoints:
+
+  - `POST /api/v1/user-profiles` -> Create user profile after email verification.
+  - `GET /api/v1/user-profiles` -> Fetch current user profile.
+  - `PUT /api/v1/user-profiles` -> Update current user profile.
+  - `POST /api/v1/documents/upload` -> Upload DOCX (JWT required).
+  - `GET /api/v1/documents` -> List user documents (JWT required).
+  - `POST /api/v1/analysis/start` -> Start analysis and store results (JWT required).
+  - `GET /api/v1/analysis/status/<task_id>` -> Fetch analysis task status (JWT required).
 
 ## 🔒 Data Privacy & Supabase Rules
 

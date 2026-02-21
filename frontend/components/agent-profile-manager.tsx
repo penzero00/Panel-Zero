@@ -6,13 +6,12 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   PlusCircle,
   Edit2,
   Trash2,
-  Check,
   X,
   ChevronDown,
   ChevronUp,
@@ -26,6 +25,12 @@ interface AgentProfileManagerProps {
   onDeleteProfile: (id: string) => void;
   onSetActive: (profileId: string, agentRole: AgentRole) => void;
   isLoading?: boolean;
+  createError?: Error | null;
+  updateError?: Error | null;
+  deleteError?: Error | null;
+  isCreating?: boolean;
+  isUpdating?: boolean;
+  isDeleting?: boolean;
 }
 
 const AGENT_ROLES = [
@@ -43,37 +48,108 @@ export function AgentProfileManager({
   onDeleteProfile,
   onSetActive,
   isLoading = false,
+  createError = null,
+  updateError = null,
+  deleteError = null,
+  isCreating = false,
+  isUpdating = false,
+  isDeleting = false,
 }: AgentProfileManagerProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [lastMutationTime, setLastMutationTime] = useState<number>(0);
+
+  // Close form when mutations complete successfully
+  useEffect(() => {
+    if (lastMutationTime === 0) return; // Wait for mutation to be triggered
+    
+    if (editingId !== null && isUpdating === false) {
+      if (updateError) {
+        // Show error, keep form open
+        setErrorMsg(updateError.message || "Failed to update profile");
+      } else {
+        // Update completed successfully
+        setEditingId(null);
+        setShowCreateForm(false);
+        resetFormData();
+        setSuccessMsg("Profile updated successfully!");
+        setLastMutationTime(0);
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    }
+  }, [isUpdating, updateError, editingId, lastMutationTime]);
+
+  useEffect(() => {
+    if (lastMutationTime === 0) return;
+    
+    if (editingId === null && isCreating === false) {
+      if (createError) {
+        // Show error, keep form open
+        setErrorMsg(createError.message || "Failed to create profile");
+      } else {
+        // Create completed successfully
+        setShowCreateForm(false);
+        resetFormData();
+        setSuccessMsg("Profile created successfully!");
+        setLastMutationTime(0);
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    }
+  }, [isCreating, createError, editingId, lastMutationTime]);
+
+  useEffect(() => {
+    if (isDeletingId === null) return;
+    
+    if (isDeleting === false) {
+      if (deleteError) {
+        // Show error
+        setErrorMsg(deleteError.message || "Failed to delete profile");
+        setIsDeletingId(null);
+      } else {
+        // Delete completed successfully
+        setIsDeletingId(null);
+        setSuccessMsg("Profile deleted successfully!");
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    }
+  }, [isDeleting, deleteError, isDeletingId]);
   const [formData, setFormData] = useState<CreateAgentProfileInput>({
     agent_role: 'tech',
     name: '',
-    description: '',
+    custom_instruction: '',
     font_family: 'Times New Roman',
     font_size: 12,
     font_style: 'normal',
+    enable_font_check: true,
     margin_left_inches: 1.5,
     margin_right_inches: 1.0,
     margin_top_inches: 1.0,
     margin_bottom_inches: 1.0,
+    enable_margin_check: true,
     line_spacing: 2.0,
     paragraph_spacing_before: 0,
     paragraph_spacing_after: 0,
     first_line_indent: 0.5,
     paragraph_alignment: 'justify',
+    enable_paragraph_check: true,
     image_format: 'embedded',
     image_min_dpi: 300,
     image_max_width_inches: 6.0,
+    enable_image_check: true,
     check_passive_voice: true,
     check_tense_consistency: true,
     check_subject_verb_agreement: true,
     check_sentence_fragments: true,
     preferred_citation_style: 'APA 7th',
+    enable_grammar_check: true,
     add_space_after_period: true,
     add_space_after_comma: true,
     check_double_spaces: true,
+    enable_spacing_check: true,
   });
 
   const toggleSection = (section: string) => {
@@ -82,75 +158,119 @@ export function AgentProfileManager({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      onUpdateProfile(editingId, formData);
-      setEditingId(null);
-    } else {
-      onCreateProfile(formData);
-      setShowCreateForm(false);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      if (editingId !== null) {
+        console.log('Updating profile:', editingId, formData);
+        onUpdateProfile(editingId, formData);
+      } else {
+        console.log('Creating profile:', formData);
+        onCreateProfile(formData);
+      }
+      // Mark that we initiated a mutation
+      setLastMutationTime(Date.now());
+    } catch (err) {
+      console.error('Submit error:', err);
+      setErrorMsg(err instanceof Error ? err.message : "An error occurred");
     }
-    // Reset form
+  };
+
+  const resetFormData = () => {
     setFormData({
       agent_role: 'tech',
       name: '',
-      description: '',
+      custom_instruction: '',
       font_family: 'Times New Roman',
       font_size: 12,
       font_style: 'normal',
+      enable_font_check: true,
       margin_left_inches: 1.5,
       margin_right_inches: 1.0,
       margin_top_inches: 1.0,
       margin_bottom_inches: 1.0,
+      enable_margin_check: true,
       line_spacing: 2.0,
       paragraph_spacing_before: 0,
       paragraph_spacing_after: 0,
       first_line_indent: 0.5,
       paragraph_alignment: 'justify',
+      enable_paragraph_check: true,
       image_format: 'embedded',
       image_min_dpi: 300,
       image_max_width_inches: 6.0,
+      enable_image_check: true,
       check_passive_voice: true,
       check_tense_consistency: true,
       check_subject_verb_agreement: true,
       check_sentence_fragments: true,
       preferred_citation_style: 'APA 7th',
+      enable_grammar_check: true,
       add_space_after_period: true,
       add_space_after_comma: true,
       check_double_spaces: true,
+      enable_spacing_check: true,
     });
   };
 
   const handleEdit = (profile: AgentProfile) => {
-    setEditingId(profile.id);
+    console.log('Editing profile:', profile);
     setFormData({
       agent_role: profile.agent_role,
-      name: profile.name,
-      description: profile.description,
-      font_family: profile.font_family,
-      font_size: profile.font_size,
-      font_style: profile.font_style,
-      margin_left_inches: profile.margin_left_inches,
-      margin_right_inches: profile.margin_right_inches,
-      margin_top_inches: profile.margin_top_inches,
-      margin_bottom_inches: profile.margin_bottom_inches,
-      line_spacing: profile.line_spacing,
-      paragraph_spacing_before: profile.paragraph_spacing_before,
-      paragraph_spacing_after: profile.paragraph_spacing_after,
-      first_line_indent: profile.first_line_indent,
-      paragraph_alignment: profile.paragraph_alignment,
-      image_format: profile.image_format,
-      image_min_dpi: profile.image_min_dpi,
-      image_max_width_inches: profile.image_max_width_inches,
-      check_passive_voice: profile.check_passive_voice,
-      check_tense_consistency: profile.check_tense_consistency,
-      check_subject_verb_agreement: profile.check_subject_verb_agreement,
-      check_sentence_fragments: profile.check_sentence_fragments,
-      preferred_citation_style: profile.preferred_citation_style,
-      add_space_after_period: profile.add_space_after_period,
-      add_space_after_comma: profile.add_space_after_comma,
-      check_double_spaces: profile.check_double_spaces,
+      name: profile.name || '',
+      custom_instruction: profile.custom_instruction || '',
+      font_family: profile.font_family || 'Times New Roman',
+      font_size: profile.font_size ?? 12,
+      font_style: profile.font_style || 'normal',
+      enable_font_check: profile.enable_font_check ?? true,
+      margin_left_inches: profile.margin_left_inches ?? 1.5,
+      margin_right_inches: profile.margin_right_inches ?? 1.0,
+      margin_top_inches: profile.margin_top_inches ?? 1.0,
+      margin_bottom_inches: profile.margin_bottom_inches ?? 1.0,
+      enable_margin_check: profile.enable_margin_check ?? true,
+      line_spacing: profile.line_spacing ?? 2.0,
+      paragraph_spacing_before: profile.paragraph_spacing_before ?? 0,
+      paragraph_spacing_after: profile.paragraph_spacing_after ?? 0,
+      first_line_indent: profile.first_line_indent ?? 0.5,
+      paragraph_alignment: profile.paragraph_alignment || 'justify',
+      enable_paragraph_check: profile.enable_paragraph_check ?? true,
+      image_format: profile.image_format || 'embedded',
+      image_min_dpi: profile.image_min_dpi ?? 300,
+      image_max_width_inches: profile.image_max_width_inches ?? 6.0,
+      enable_image_check: profile.enable_image_check ?? true,
+      check_passive_voice: profile.check_passive_voice ?? true,
+      check_tense_consistency: profile.check_tense_consistency ?? true,
+      check_subject_verb_agreement: profile.check_subject_verb_agreement ?? true,
+      check_sentence_fragments: profile.check_sentence_fragments ?? true,
+      preferred_citation_style: profile.preferred_citation_style || 'APA 7th',
+      enable_grammar_check: profile.enable_grammar_check ?? true,
+      add_space_after_period: profile.add_space_after_period ?? true,
+      add_space_after_comma: profile.add_space_after_comma ?? true,
+      check_double_spaces: profile.check_double_spaces ?? true,
+      enable_spacing_check: profile.enable_spacing_check ?? true,
     });
+    setEditingId(profile.id);
     setShowCreateForm(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setLastMutationTime(0); // Reset mutation tracking
+  };
+
+  const handleDelete = (profileId: string) => {
+    if (!confirm('Are you sure you want to delete this profile?')) {
+      return;
+    }
+    setIsDeletingId(profileId);
+    setErrorMsg(null);
+    try {
+      onDeleteProfile(profileId);
+      // Mark that we initiated a mutation
+      setLastMutationTime(Date.now());
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to delete profile");
+      setIsDeletingId(null);
+    }
   };
 
   const renderProfileForm = () => (
@@ -195,21 +315,23 @@ export function AgentProfileManager({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="e.g., APA 7th Strict"
             required
           />
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-          rows={2}
-          placeholder="Brief description of this profile..."
-        />
+        
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">
+            Custom Instructions
+            <span className="text-xs font-normal text-slate-500 ml-2">(Optional - will be included in AI agent prompt)</span>
+          </label>
+          <textarea
+            value={formData.custom_instruction}
+            onChange={(e) => setFormData({ ...formData, custom_instruction: e.target.value })}
+            className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            rows={3}
+            placeholder="Add specific instructions for this agent, e.g., 'Focus heavily on statistical significance' or 'Be extra strict with APA formatting'..."
+          />
+        </div>
       </div>
 
       {/* Font Settings */}
@@ -222,6 +344,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Font Settings
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_font_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_font_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable font validation</span>
+            </label>
           </h4>
           {expandedSections.font ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -281,6 +412,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Page Margins (inches)
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_margin_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_margin_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable margin validation</span>
+            </label>
           </h4>
           {expandedSections.margins ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -348,6 +488,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Paragraph & Spacing
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_paragraph_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_paragraph_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable paragraph validation</span>
+            </label>
           </h4>
           {expandedSections.paragraph ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -413,6 +562,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Image Format Rules
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_image_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_image_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable image validation</span>
+            </label>
           </h4>
           {expandedSections.images ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -463,6 +621,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Grammar & Language Checks
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_grammar_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_grammar_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable grammar checks</span>
+            </label>
           </h4>
           {expandedSections.grammar ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -472,7 +639,7 @@ export function AgentProfileManager({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.check_passive_voice}
+                checked={formData.check_passive_voice ?? true}
                   onChange={(e) => setFormData({ ...formData, check_passive_voice: e.target.checked })}
                   className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
@@ -481,7 +648,7 @@ export function AgentProfileManager({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.check_tense_consistency}
+                checked={formData.check_tense_consistency ?? true}
                   onChange={(e) => setFormData({ ...formData, check_tense_consistency: e.target.checked })}
                   className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
@@ -490,7 +657,7 @@ export function AgentProfileManager({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.check_subject_verb_agreement}
+                checked={formData.check_subject_verb_agreement ?? true}
                   onChange={(e) => setFormData({ ...formData, check_subject_verb_agreement: e.target.checked })}
                   className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
@@ -499,7 +666,7 @@ export function AgentProfileManager({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.check_sentence_fragments}
+                checked={formData.check_sentence_fragments ?? true}
                   onChange={(e) => setFormData({ ...formData, check_sentence_fragments: e.target.checked })}
                   className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
@@ -534,6 +701,15 @@ export function AgentProfileManager({
           <h4 className="font-bold text-slate-800 flex items-center gap-2">
             <Settings size={18} className="text-blue-600" />
             Spacing & Punctuation Rules
+            <label className="flex items-center gap-2 ml-4 font-normal text-sm" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={formData.enable_spacing_check ?? true}
+                onChange={(e) => setFormData({ ...formData, enable_spacing_check: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-slate-600">Enable spacing checks</span>
+            </label>
           </h4>
           {expandedSections.spacing ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
@@ -542,7 +718,7 @@ export function AgentProfileManager({
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.add_space_after_period}
+                checked={formData.add_space_after_period ?? true}
                 onChange={(e) => setFormData({ ...formData, add_space_after_period: e.target.checked })}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
@@ -551,7 +727,7 @@ export function AgentProfileManager({
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.add_space_after_comma}
+                checked={formData.add_space_after_comma ?? true}
                 onChange={(e) => setFormData({ ...formData, add_space_after_comma: e.target.checked })}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
@@ -560,7 +736,7 @@ export function AgentProfileManager({
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.check_double_spaces}
+                checked={formData.check_double_spaces ?? true}
                 onChange={(e) => setFormData({ ...formData, check_double_spaces: e.target.checked })}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
@@ -570,20 +746,38 @@ export function AgentProfileManager({
         )}
       </div>
 
+      {(errorMsg || updateError || createError || deleteError) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-red-700">
+            {errorMsg || updateError?.message || createError?.message || deleteError?.message}
+          </p>
+        </div>
+      )}
+      
+      {successMsg && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-700">{successMsg}</p>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-4">
         <button
           type="submit"
-          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+          disabled={(isUpdating && editingId !== null) || (isCreating && editingId === null) || isLoading}
+          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
         >
-          {editingId ? 'Update Profile' : 'Create Profile'}
+          {((isUpdating && editingId !== null) || (isCreating && editingId === null)) ? '...' : editingId ? 'Update Profile' : 'Create Profile'}
         </button>
         <button
           type="button"
+          disabled={(isUpdating && editingId !== null) || (isCreating && editingId === null) || isLoading}
           onClick={() => {
             setShowCreateForm(false);
             setEditingId(null);
+            setErrorMsg(null);
+            setSuccessMsg(null);
           }}
-          className="px-6 py-3 rounded-xl font-semibold text-slate-600 border border-slate-300 hover:bg-slate-50 transition-colors"
+          className="px-6 py-3 rounded-xl font-semibold text-slate-600 border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Cancel
         </button>
@@ -615,11 +809,18 @@ export function AgentProfileManager({
 
       {(showCreateForm || editingId) && renderProfileForm()}
 
+      {(deleteError || (successMsg && !showCreateForm)) && (
+        <div className={`${successMsg ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4`}>
+          <p className={`text-sm ${successMsg ? 'text-green-700' : 'text-red-700'}`}>
+            {successMsg || deleteError?.message}
+          </p>
+        </div>
+      )}
+
       {!showCreateForm && !editingId && (
         <div className="space-y-8">
           {AGENT_ROLES.map((role) => {
             const roleProfiles = groupedProfiles[role.id] || [];
-            const activeProfile = roleProfiles.find((p) => p.is_active);
 
             return (
               <div key={role.id} className="space-y-4">
@@ -639,23 +840,18 @@ export function AgentProfileManager({
                       <div
                         key={profile.id}
                         className={`p-5 rounded-2xl border-2 transition-all duration-300 ${
-                          profile.is_active
-                            ? 'border-blue-500 bg-blue-50/50 shadow-md ring-4 ring-blue-500/10'
+                          profile.is_default
+                            ? 'border-green-400 bg-green-50/40 shadow-sm'
                             : 'border-slate-200 bg-white/80 backdrop-blur-sm hover:border-slate-300 hover:shadow-sm'
                         }`}
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h4 className="font-bold text-slate-800 text-lg">{profile.name}</h4>
-                            {profile.description && (
-                              <p className="text-sm text-slate-500 mt-1">{profile.description}</p>
+                            {profile.custom_instruction && (
+                              <p className="text-sm text-slate-500 mt-1">{profile.custom_instruction}</p>
                             )}
                           </div>
-                          {profile.is_active && (
-                            <span className="bg-blue-600 text-white text-[10px] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase shadow-sm">
-                              Active
-                            </span>
-                          )}
                           {profile.is_default && (
                             <span className="bg-green-600 text-white text-[10px] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase shadow-sm">
                               Default
@@ -686,14 +882,6 @@ export function AgentProfileManager({
 
                         {!profile.is_default && (
                           <div className="flex gap-2 pt-3 border-t border-slate-200">
-                            {!profile.is_active && (
-                              <button
-                                onClick={() => onSetActive(profile.id, role.id)}
-                                className="flex-1 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1"
-                              >
-                                <Check size={14} /> Set Active
-                              </button>
-                            )}
                             <button
                               onClick={() => handleEdit(profile)}
                               className="flex-1 text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1"
@@ -701,10 +889,11 @@ export function AgentProfileManager({
                               <Edit2 size={14} /> Edit
                             </button>
                             <button
-                              onClick={() => onDeleteProfile(profile.id)}
-                              className="flex-1 text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                              onClick={() => handleDelete(profile.id)}
+                              disabled={isDeletingId === profile.id}
+                              className="flex-1 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                             >
-                              <Trash2 size={14} /> Delete
+                              <Trash2 size={14} /> {isDeletingId === profile.id ? '...' : 'Delete'}
                             </button>
                           </div>
                         )}

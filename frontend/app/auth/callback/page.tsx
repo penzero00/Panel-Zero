@@ -1,6 +1,6 @@
 /**
  * Auth Callback Page
- * Handles email verification and redirects
+ * Handles email verification and creates user profile
  */
 
 'use client';
@@ -34,14 +34,37 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          // Update user profile to mark email as verified
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .update({ email_verified: true, updated_at: new Date().toISOString() })
-            .eq('id', user.id);
+          // Get fresh session to ensure we have the token
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) {
+            setStatus('error');
+            setMessage('Failed to get session. Please try again.');
+            return;
+          }
 
-          if (profileError) {
-            console.error('Profile update error:', profileError);
+          // Create user profile via backend API
+          try {
+            const userMetadata = user.user_metadata || {};
+            const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/user-profiles`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                full_name: userMetadata.full_name || user.email?.split('@')[0] || 'User',
+                email: user.email || '',
+                institution: userMetadata.institution || '',
+                role: 'student',
+              }),
+            });
+
+            if (!profileResponse.ok) {
+              console.error('Profile creation error:', await profileResponse.json());
+            }
+          } catch (profileError) {
+            console.error('Error creating profile:', profileError);
+            // Continue even if profile creation fails - it can be created later
           }
 
           setStatus('success');
