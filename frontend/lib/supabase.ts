@@ -39,6 +39,7 @@ export type Database = {
         Row: {
           id: string;
           full_name: string | null;
+          email: string | null;
           institution: string | null;
           role: string;
           email_verified: boolean;
@@ -49,6 +50,7 @@ export type Database = {
         Insert: {
           id: string;
           full_name?: string | null;
+          email?: string | null;
           institution?: string | null;
           role?: string;
           email_verified?: boolean;
@@ -59,6 +61,7 @@ export type Database = {
         Update: {
           id?: string;
           full_name?: string | null;
+          email?: string | null;
           institution?: string | null;
           role?: string;
           email_verified?: boolean;

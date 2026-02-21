@@ -5,8 +5,6 @@ lxml
 supabase
 python-dotenv
 openai
-google-generativeai
 pydantic
 pydantic-settings
 typing-extensions
-bytez

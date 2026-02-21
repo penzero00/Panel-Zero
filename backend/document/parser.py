@@ -90,6 +90,35 @@ class ChapterExtractor:
 
         return chunks
 
+    def extract_full_structure(self, max_paragraphs: int = 10000) -> Dict[str, Any]:
+        """
+        Extract complete document structure with paragraphs for frontend display.
+        Returns {paragraphs: [{index, text, style}], full_text: str}
+        Limits to max_paragraphs to prevent memory issues (200 pages ≈ 6000 paragraphs)
+        """
+        paragraphs = []
+        for idx, para in enumerate(self.doc.paragraphs):
+            if idx >= max_paragraphs:
+                break
+            paragraphs.append({
+                "index": idx,
+                "text": para.text,
+                "style": para.style.name if para.style else "Normal",
+            })
+        
+        # Estimate page count (rough: 250 words per page)
+        total_words = sum(len(p.text.split()) for p in self.doc.paragraphs)
+        estimated_pages = max(1, total_words // 250)
+        
+        return {
+            "paragraphs": paragraphs,
+            "full_text": "\n".join([p.text for p in self.doc.paragraphs]),
+            "total_paragraphs": len(self.doc.paragraphs),
+            "extracted_paragraphs": len(paragraphs),
+            "estimated_pages": estimated_pages,
+            "truncated": len(self.doc.paragraphs) > max_paragraphs,
+        }
+
     def get_document_metadata(self) -> Dict[str, Any]:
         """Extract document metadata"""
         if self.doc.core_properties:

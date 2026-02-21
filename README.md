@@ -22,6 +22,29 @@ The system uses a Supervisor-Worker architecture via LangGraph, but agents are t
 - **The Subject Specialist**: Powered by GPT-4o with RAG. It checks coherence between the Statement of the Problem and the final findings.
 - **The Chairman**: Synthesizes the reports from all other agents into a single, consolidated analysis page.
 
+## Custom Agent Profiles
+
+Each agent follows **configurable preferences** known as Agent Profiles. While the system provides sensible defaults for each role, users can create custom profiles to adapt analysis to their specific requirements.
+
+### Profile Customization Options
+
+- **Font Preferences**: Font family (Times New Roman, Arial, Calibri, etc.), size (8-72pt), and style
+- **Margin Requirements**: All four margins (0.1-2.5 inches, DOCX-compatible)
+- **Paragraph Formatting**: Line spacing, paragraph alignment, first-line indentation, spacing before/after
+- **Image Settings**: Minimum DPI (default 300), maximum width, format preference (embedded/inline/floating)
+- **Grammar Rules**: Options to check passive voice, tense consistency, subject-verb agreement, sentence fragments
+- **Citation Style**: APA 7th, IEEE, Chicago, or custom preference
+
+### Using Custom Profiles
+
+1. Navigate to **Settings** → **Agent Profiles** in the dashboard
+2. Create a new profile for your agent role
+3. Configure all formatting and analysis preferences
+4. Set the profile as **Active** to use it for document analysis
+5. Upload a thesis and select the agent role—the active profile preferences will automatically apply
+
+Custom profiles are user-specific and stored securely in Supabase. Multiple profiles per role are supported; simply activate the one you want to use.
+
 ## Tech Stack
 
 I'm not entirely sure how we will scale the queue system yet, but this is the current production stack.

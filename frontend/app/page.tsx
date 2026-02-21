@@ -5,20 +5,38 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { ShieldAlert, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { supabase } from '@/lib/supabase';
+import { useCurrentUser, useUserProfile } from '@/lib/query-hooks';
 
 export default function LandingPage() {
+  const { data: currentUser } = useCurrentUser();
+  const userId = currentUser?.id ?? null;
+  const { data: profile } = useUserProfile(userId);
+  const isAuthenticated = !!currentUser;
+  const displayName = useMemo(
+    () => profile?.full_name || currentUser?.email || 'User',
+    [profile, currentUser]
+  );
+  const avatarUrl = profile?.avatar_url || null;
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-blue-200">
       <Header
-        isAuthenticated={false}
+        isAuthenticated={isAuthenticated}
         activeTab="analysis"
         onTabChange={() => {}}
-        onLogout={() => {}}
+        userName={displayName}
+        avatarUrl={avatarUrl}
+        onLogout={handleLogout}
       />
 
       <div className="flex flex-col min-h-screen pt-16 relative overflow-hidden">

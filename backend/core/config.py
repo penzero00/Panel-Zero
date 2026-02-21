@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
+from urllib.parse import urlparse
 
 class Settings(BaseSettings):
     # API
@@ -12,13 +13,10 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: Optional[str] = None
     SUPABASE_ANON_KEY: Optional[str] = None
 
-    # AI API Keys (optional for testing)
-    BYTEZ_API_KEY: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
-    GEMINI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4o"
-    GEMINI_FLASH_MODEL: str = "gemini-1.5-flash"
-    GEMINI_PRO_MODEL: str = "gemini-1.5-pro"
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_ENDPOINT: Optional[str] = None
+    AZURE_OPENAI_API_KEY: Optional[str] = None
+    AZURE_OPENAI_MODEL: str = "gpt-5.2-chat"
 
     # Storage
     MAX_FILE_SIZE_MB: int = 50
@@ -30,5 +28,18 @@ class Settings(BaseSettings):
     ENFORCE_RLS: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    
+    @property
+    def AZURE_OPENAI_ENDPOINT_BASE(self) -> Optional[str]:
+        """Extract base endpoint URL for Azure OpenAI SDK.
+        
+        For cognitiveservices.azure.com endpoints, return the base URL without path.
+        The AzureOpenAI SDK will handle routing to chat completions API internally.
+        """
+        if not self.AZURE_OPENAI_ENDPOINT:
+            return None
+        parsed = urlparse(self.AZURE_OPENAI_ENDPOINT)
+        # Return scheme + netloc (e.g., https://resource.cognitiveservices.azure.com)
+        return f"{parsed.scheme}://{parsed.netloc}"
 
 settings = Settings()

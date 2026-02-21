@@ -23,31 +23,31 @@ class AgentConfig:
         AgentRole.TECHNICAL_READER: {
             "name": "Technical Reader",
             "description": "Strict format, margins, and font checking",
-            "model": "python",
-            "use_llm": False,
+            "model": None,  # Use default Azure model
+            "use_llm": True,
         },
         AgentRole.LANGUAGE_CRITIC: {
             "name": "Language Critic",
             "description": "Tense consistency and syntax checking",
-            "model": "gemini-1.5-flash",
+            "model": None,  # Use default Azure model
             "use_llm": True,
         },
         AgentRole.STATISTICIAN: {
             "name": "Statistician",
             "description": "Data logic and table format verification",
-            "model": "gemini-1.5-pro",
+            "model": None,  # Use default Azure model
             "use_llm": True,
         },
         AgentRole.SUBJECT_SPECIALIST: {
             "name": "Subject Specialist",
             "description": "Content coherence and logic checking",
-            "model": "gpt-4o",
+            "model": None,  # Use default Azure model
             "use_llm": True,
         },
         AgentRole.CHAIRMAN: {
             "name": "Chairman",
             "description": "Consolidated report synthesis",
-            "model": "gpt-4o",
+            "model": None,  # Use default Azure model
             "use_llm": True,
         },
     }

@@ -8,6 +8,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
+import { Sidebar } from '@/components/sidebar';
 import { supabase } from '@/lib/supabase';
 import {
   useCurrentUser,
@@ -17,7 +19,7 @@ import {
   useUpdateAuthPassword,
   useUpdateAvatar,
 } from '@/lib/query-hooks';
-import { Camera, Loader2, Mail, Lock, UserRound } from 'lucide-react';
+import { Camera, Loader2, Mail, Lock, UserRound, Menu } from 'lucide-react';
 
 const MAX_AVATAR_MB = 5;
 
@@ -31,6 +33,8 @@ export default function SettingsPage() {
   const updateEmailMutation = useUpdateAuthEmail();
   const updatePasswordMutation = useUpdateAuthPassword();
   const updateAvatarMutation = useUpdateAvatar();
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -63,6 +67,7 @@ export default function SettingsPage() {
 
   const userEmail = useMemo(() => currentUser?.email || '', [currentUser]);
   const userInitial = useMemo(() => (userEmail ? userEmail[0].toUpperCase() : 'U'), [userEmail]);
+  const displayName = useMemo(() => profile?.full_name || userEmail || 'User', [profile, userEmail]);
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -167,18 +172,37 @@ export default function SettingsPage() {
     router.push('/');
   };
 
+  const handleSidebarTabChange = (tab: 'analysis' | 'documents' | 'profiles') => {
+    router.push(`/dashboard?tab=${tab}`);
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab="analysis"
+        onTabChange={handleSidebarTabChange}
+      />
       <Header
         isAuthenticated={!!currentUser}
         activeTab="analysis"
         onTabChange={() => {}}
-        userName={userEmail || 'User'}
+        userName={displayName}
+        avatarUrl={avatarUrl}
         onLogout={handleLogout}
       />
 
       <main className="flex-1 pt-20 pb-16">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6 relative">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="fixed top-20 left-6 z-30 p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            aria-label="Open menu"
+          >
+            <Menu size={20} className="text-slate-700" />
+          </button>
           <header className="mb-10">
             <h1 className="text-3xl font-bold text-slate-900">Account Settings</h1>
             <p className="text-slate-500 mt-2">Manage your profile details and security preferences.</p>
@@ -377,6 +401,7 @@ export default function SettingsPage() {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

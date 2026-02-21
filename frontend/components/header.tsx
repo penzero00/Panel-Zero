@@ -14,6 +14,7 @@ interface HeaderProps {
   activeTab: 'analysis' | 'documents' | 'profiles';
   onTabChange: (tab: 'analysis' | 'documents' | 'profiles') => void;
   userName?: string;
+  avatarUrl?: string | null;
   onLogout: () => void;
 }
 
@@ -22,6 +23,7 @@ export function Header({
   activeTab,
   onTabChange,
   userName = 'User',
+  avatarUrl = null,
   onLogout,
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -42,7 +44,7 @@ export function Header({
     <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-200/50 transition-all duration-300">
       <div className="w-full px-6 h-16 flex items-center justify-between">
         {/* Logo - Very Left */}
-        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center font-bold text-white shadow-md group-hover:shadow-blue-500/30 transition-all">
             P0
           </div>
@@ -64,9 +66,17 @@ export function Header({
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-full transition-colors border border-transparent hover:border-slate-200"
               >
-                <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600">
-                  <User size={20} />
-                </div>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600">
+                    <User size={20} />
+                  </div>
+                )}
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
